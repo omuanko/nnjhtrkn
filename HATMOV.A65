@@ -1,0 +1,1600 @@
+;
+;
+;	<NINJA HATTORI KUN> hattori kun & tama
+;
+;
+;----------------------------------------------------------------------
+;	hattori kun move
+;
+;mandir
+;bit0move?,1:r(1)orl(0),2:jump,3,jmpb chk,4:tama uchif.
+;bit 5:fall,bit6 fall yarare,bit 7,yarare
+;----------------------------------------------------------------------
+;
+;	hattori kun move
+;
+manini:
+	lda	#$40
+	sta	manxl
+	lda	scrole
+	sta	manxh
+	lda	#$a8
+	sta	many
+;
+	ldx	#2
+	stx	mandir
+	dex
+	stx	hmvdis	;hattori move kyori
+	dex
+manin1:	stx	mansyu
+	stx	walkcn
+	stx	mancnt
+	stx	wlkstp
+	stx	stopcn
+	stx	lasyfl
+	stx	tekbfl
+	stx	miztch
+	stx	misafl
+cksprt:	rts
+;
+mansin:
+	lda	#$4
+	sta	manxl
+	lda	#0
+	sta	manxh
+	lda	#$30
+	sta	many
+	lda	#%0000_0010
+	sta	mandir
+	bne	manin1	;<bra>
+;
+;
+tekbcl:
+	db	$31,$00,$10,$0f
+	db	$31,$00,$10,$0f
+	db	$31,$00,$10,$0f
+;
+;----------------------------------------------------------
+;special warp
+chkspw:
+	lda	area
+	cmp	#7
+	bne	cksprt
+	lda	time
+	cmp	#10
+	bcs	cksprt
+	lda	many
+	cmp	#$a8
+	bne	cksprt
+	lda	manxh
+	cmp	#3
+	bne	cksprt
+	lda	manxl
+	and	#$fe
+	cmp	#$6a
+	bne	cksprt
+;
+	lda	#2
+	sta	wrpflg
+	lda	hmvdis
+	sta	nowdis
+	lda	#9
+	sta	muscmd
+	jmp	enmini
+;
+;
+;
+manwrp:
+	ldx	#11
+	lda	wrpflg
+	and	#2
+	beq	mnwar0
+	ldx	#15
+mnwar0:	cpx	scrole
+	beq	mnwpen
+;
+mnwp00:
+;	lda	mandir
+;	ora	#%0000_0010
+;	sta	mandir
+	ldx	#2
+	lda	scrolh
+	and	#1
+	beq	mnwp01
+	ldx	#1
+mnwp01:	txa
+	sta	hmvdis
+	clc
+	adc	manxl
+	sta	manxl
+	lda	#0
+	adc	manxh
+	sta	manxh
+	rts
+mnwpen:
+	lda	#0
+	sta	wrpflg
+	lda	nowdis
+	sta	hmvdis
+	lda	#2
+	sta	muscmd
+manrrr:	rts
+;
+mandem:
+	lda	mandir
+	and	#1
+	beq	manrrr	
+	inc	manxl
+	lda	manxl
+	cmp	#$60
+	bcc	mndmrt
+	lda	#$60
+	sta	manxl
+	lda	#2
+	sta	mandir
+	inc	snmflg
+	rts
+mndmrt:	lda	#1
+	sta	wlkstp
+	jmp	mflmov
+;
+;
+manmov:
+	lda	mandir
+	and	#$80
+	bne	manyra
+;
+	lda	wrpflg
+	bne	manwrp
+;
+	lda	clrflg
+	bne	mandem
+;
+	PTRSET	colgen,p0
+	lda	tekbfl
+	beq	tkbtrc
+	PTRSET	tekbcl,p0
+	lda	timer
+	and	#1
+	bne	tkbtrc
+	dec	tekbfl
+tkbtrc:
+	ldy	#(12 - 1)
+tkbclp:	lda	[p0],y
+	sta	colwrk,y
+	dey
+	bpl	tkbclp
+;
+	lda	hypodr
+	beq	manm10
+	lda	scrolh
+	and	#1
+	bne	manm10
+	lda	#2
+	sta	hmvdis
+	dec	hypodr
+;
+manm10:	jsr	chkjmp
+	jsr	manjmp
+	jsr	stnchk		;ashi moto check
+	jsr	manfal		;hattori kun ochiru 
+	jsr	chkbtn
+	jsr	manhmv
+	jsr	mizyra
+	jsr	ninset		;ninpou set
+	jsr	mchman		;machine ninja to hattori
+	jmp	chkspw
+;
+;movret:	rts
+;
+manyra:
+	lda	lasyfl
+	bne	lasyra
+;
+	dec	walkcn
+	bne	manyrt
+	lda	#1
+	sta	ovrflg
+lasyrt:
+manyrt:	rts	
+;
+lasyra:
+	dec	lasyfl
+	bne	lasyrt
+	lda	mandir
+	and	#$7f	;$02	;#$7f
+	sta	mandir
+	lda	colgen+16+2
+	sta	colwrk+16+2
+	lda	colgen+16+3
+	sta	colwrk+16+3
+	lda	misafl
+	beq	lasyrt
+	lda	mandir
+	and	#$02
+	sta	mandir
+	ldx	#0
+	jmp	manin1
+;
+chkjmp:
+	lda	kumflg
+	bne	manup	;kumo nori manret
+	lda	mssflg
+	bne	chkjm0
+	lda	mandir	;load man dir
+	and	#$24	;test jump & fall stat.
+	bne	chkjrt	;jump & fall skip
+;
+chkjm0:	lda	joyone	;1up	;joy1b
+	bit	jmpbtn	;joy up
+	bne	chkb	;jump button ok
+	lda	mandir	;load man dir
+	and	#$f7	;reset jump stat.(jump button hanare)
+	sta	mandir	;save stat.
+chkjrt:	rts
+;
+chkb:	;first jump
+;
+	lda	mandir	;
+	bit	bit3st
+	bne	chkbrt
+;
+	ldy	#$0f
+	lda	mandir
+	and	#$24
+	beq	*+4
+	ldy	#$2f
+	cpy	many
+	bcs	chkbrt
+;
+	jsr	chkbns
+	jsr	chkbos
+	lda	#$c
+	jsr	effset
+	lda	mandir
+	and	#%1101_0011
+	ora	#$0c
+	sta	mandir
+	lda	#0
+	sta	mjpcnt
+	sta	takwrk
+	lda	takflg
+	eor	takodr
+	beq	chkbrt
+	lda	takflg
+	eor	#1
+	sta	takflg
+chkbrt:	rts
+;
+manup:
+	lda	joyone
+	bit	fusbtn
+	bne	mandwn
+	bit	upbtn
+	beq	manurt
+;
+	lda	many
+	sec
+	sbc	#($30 - $8 + 1)
+	jsr	manash
+	cmp	#3
+	beq	manurt
+	lda	many
+	sec
+	sbc	#1
+	sta	many
+	cmp	#$30
+	bcs	manurt
+	lda	#$30
+	sta	many
+manurt:	jmp	manyur		;man kumonori no yuragi
+;
+mandwn:
+	lda	many
+	sec
+	sbc	#($30 - $18)
+	jsr	manash
+	and	#2
+	bne	mndnrt
+;
+	lda	many
+	clc
+	adc	#1
+	sta	many
+	cmp	#$a8
+	bcc	mndnrt
+	lda	#$a8
+	sta	many
+mndnrt:
+manyur:	;kumo no notta toki no jouge no ugoki
+	lda	timer
+	and	#3
+	bne	mnyrur
+	ldx	mnyrps
+	lda	many
+	clc
+	adc	mnyrut,x
+	sta	bb	;save new y
+	txa		;load up or down
+	lsr	a
+	lsr	a
+	pha		;push x
+	tax
+	lda	bb
+	sec
+	sbc	myrdmt,x
+	jsr	manash	
+	sta	aa
+	pla
+	tax		;pull x
+	lda	aa
+	cmp	myrcmd,x
+	bcs	mnyr10
+	lda	bb	
+	sta	many
+mnyr10:	ldx	mnyrps
+	inx
+	txa
+	and	#7
+	sta	mnyrps
+mnyrur:	rts
+;
+myrdmt:	db	$28,$18
+myrcmd:	db	3,2
+;
+mnyrut:
+	db	-1,-1,-1,-1,1,1,1,1
+;
+chkbns:
+	lda	tekbeg
+	bne	ckbnrt
+ckbn10:
+	lda	area
+	asl	a
+	tay
+	lda	manxl
+	and	#$fc
+	cmp	chkbtb+0,y
+	bne	ckbnrt
+	lda	manxh
+	cmp	chkbtb+1,y
+	bne	ckbnrt
+	lda	area
+	and	#3
+	tay
+	lda	chkbch,y
+	sta	tekbeg
+	lda	#$ff
+	sta	tekbfl	
+ckbnrt:	rts
+;
+chkbch:
+	db	1,2,1,3
+;
+chkbtb:
+	ANDDB	$ad,$01
+	ANDDB	$16,$05
+	ANDDB	$ca,$05
+	ANDDB	$94,$07
+;
+	ANDDB	$b8,$09
+	ANDDB	$56,$05
+	ANDDB	$00,$08	;nothing
+	ANDDB	$10,$0b
+;
+	ANDDB	$50,$08
+	ANDDB	$36,$02
+	ANDDB	$42,$0b
+	ANDDB	$9f,$08
+;
+	ANDDB	$55,$04
+	ANDDB	$4e,$07
+	ANDDB	$45,$06
+	ANDDB	$58,$08
+
+;
+chkbos:
+	ldy	bosecn
+	iny
+	beq	ckbsrt
+;
+	lda	many
+	and	#$f8
+	cmp	boscy
+	bne	ckbsrt
+;
+	lda	manxl
+	clc
+	adc	#7
+	tax
+	lda	manxh
+	adc	#0
+	tay
+	txa
+	sec
+	sbc	boscxl
+	tax
+	tya
+	sbc	boscxh
+	cpx	#16+7
+	sbc	#0
+	bcs	ckbsrt
+	jmp	bosgen
+ckbsrt:	rts
+;
+;
+chkbtn:
+	lda	mssflg
+	bne	chkbbb
+	lda	mandir
+	and	#$24	;jump & fall
+	bne	chkb5
+chkbbb:	lda	stopcn
+	bne	chkbxx
+	lda	joyone
+	bit	lefbtn
+	bne	chkb0
+	bit	rigbtn
+	bne	chkb1
+	jmp	chkb2
+;
+chkbxx:
+	dec	stopcn
+	lda	stopcn
+	cmp	#4
+	bne	chkbxr
+	lda	mandir
+	eor	#$2
+	sta	mandir
+chkbxr:	rts
+;
+chkb0:
+	lda	mandir
+	lsr	a
+	bcc	chkb01
+	lsr	a
+	bcs	chkb6
+	lda	walkcn
+	bne	chkb2
+;
+chkb01:	lda	mandir
+	and	#$fc
+	ora	#$01	
+	sta	mandir	;left
+	jsr	wstinc
+	lda	mnwsdt,x
+	sta	walkcn
+chkb0r:	rts
+chkb1:
+	lda	mandir
+	lsr	a
+	bcc	chkb11
+	lsr	a
+	bcc	chkb6
+	lda	walkcn
+	bne	chkb2
+;
+chkb11:	lda	mandir
+	and	#$fc
+	ora	#$3
+	sta	mandir	;right
+	jsr	wstinc
+	lda	mnwsdt,x
+	sta	walkcn
+chkb1r:	rts
+;
+chkb2:
+	ldx	walkcn
+	beq	chkb31
+	dex
+	stx	walkcn
+	rts
+chkb31:	ldx	wlkstp
+	beq	chkb21
+	dex
+	stx	wlkstp
+	lda	mnwsdt,x
+	sta	walkcn
+chkb3:	rts
+chkb5:
+	lda	mandir
+	and	#1
+	beq	chkb3
+	lda	walkcn
+	bne	chkb2
+	lda	#7	;??????
+	sta	walkcn
+	rts
+;
+chkb6:	lda	#8
+	sta	stopcn
+chkb21:
+	lda	mandir
+	and	#$fe
+	sta	mandir
+	lda	#0
+	sta	walkcn
+	sta	wlkstp
+	rts
+;	
+wstinc:
+	ldx	wlkstp	;walk step 0 stop 1 low 2 second 3 top
+	inx
+	txa
+	cpx	#3
+	bcs	wstirt
+	sta	wlkstp
+wstirt:	rts
+;
+mnwsdt:	db	0,16,16,16	;8,4
+;
+stnchk:
+	lda	#0
+	sta	ashmiz	;ashi moto ga mize reset
+	lda	kumflg
+	bne	stnret	;kumo nori
+	lda	mandir
+	and	#$24
+	bne	stnret
+;
+	lda	many
+	sec
+	sbc	#($30 - $18)
+	jsr	manash
+	bit	bit1st	;	and	#2
+	bne	stnret
+	ldx	mizflg
+	beq	nostn
+	and	#1
+	beq	nostn
+	lda	#1
+	sta	ashmiz
+	rts	;	bne	stnret	
+nostn:
+	lda	mandir
+	ora	#%0010_0000
+	sta	mandir
+	lda	#0
+	sta	mjpcnt
+mzyrrt:
+stnret:	rts
+;
+;mizu gumo yuragi
+mizyra:
+	lda	mandir
+	and	#24
+	bne	mzyrrt
+	lda	ashmiz
+	beq	mzyrrt
+	jmp	manyur
+;
+mckcal:	clc
+	adc	manxl
+	sta	mchkxl
+	lda	manxh
+	adc	#0
+	sta	mchkxh
+	rts
+;
+manash:	;man no ashimoto no chr get
+	;in Areg test y
+	sta	mchky
+	lda	#0
+	jsr	mckcal
+	jsr	mncchk
+	pha
+	lda	#7
+	jsr	mckcal
+	jsr	mncchk
+	sta	aa
+	pla
+	ora	aa
+	rts
+;
+manyko:
+	asl	a
+	tax
+	lda	manxl
+	clc
+	adc	mnyoff+0,x
+	sta	mchkxl
+	lda	manxh
+	adc	mnyoff+1,x
+	sta	mchkxh
+;
+	lda	many
+	sec
+	sbc	#($30 - $8)
+	sta	mchky
+	jsr	mncchk
+	pha
+	lda	mchky
+	clc
+	adc	#7
+	sta	mchky
+	jsr	mncchk
+	pha
+	lda	mchky
+	clc
+	adc	#8
+	sta	mchky
+	jsr	mncchk
+	sta	aa
+	pla
+	ora	aa
+	sta	aa
+	pla
+	ora	aa
+	rts
+;
+mnyoff:
+	dw	$ffff
+	dw	$8
+;
+mnwcdt:	db	0,1,0,0
+;
+manhmv:	lda	mandir
+	lsr	a
+	bcc	mnhmrt
+	jsr	mflmov
+	lda	mancnt
+	beq	mnhmok
+	dec	mancnt
+mnhmrt:	rts
+mnhmok:
+	ldx	wlkstp
+	lda	mnwcdt,x
+	sta	mancnt
+	lda	mandir
+	and	#2
+	bne	manrig
+;
+manlef:	;left move
+	lda	manxl
+	ora	manxh
+	beq	resmov
+	lda	#0
+	jsr	manyko
+	cmp	#3
+	beq	resmov
+;
+	lda	manxl
+	sec
+	sbc	hmvdis		;#2	;1********
+	sta	manxl
+	tax
+	lda	manxh
+	sbc	#0
+	sta	manxh
+	cmp	#ARELEN
+	bcs	manlbd
+	cpx	scrolh
+	sbc	scrole
+	bcs	mlret
+manlbd:
+	lda	scrolh
+	sta	manxl
+	lda	scrole
+	sta	manxh
+resmov:
+mlret:
+mlrrt:	rts
+;
+manrig:	;right move
+	lda	manxl
+	cmp	#$f0
+	lda	manxh
+	sbc	#ARELEN-1
+	bcs	resmov
+;
+	lda	#1
+	jsr	manyko
+	cmp	#3
+	beq	resmov	
+;*********
+	lda	manxl
+	clc
+	adc	hmvdis		;#2	;1********
+	sta	manxl
+	lda	manxh
+	adc	#0
+	sta	manxh
+	cmp	#ARELEN-1	;$7
+	bcc	mrret
+	lda	manxl
+	cmp	#$f0
+	bcc	mrret
+	lda	mansyu	;shuryo flg
+	bne	manlsh
+	lda	#$f0
+	sta	manxl
+	lda	mandir
+	and	#$de
+	sta	mandir
+	lda	#$0
+	sta	walkcn
+mrret:
+	rts
+mflmov:	
+	ldx	wlkstp
+	lda	timer
+	and	manfdt,x
+	bne	mrrrt
+	ldx	manflp
+	inx
+	txa
+	and	#3
+	sta	manflp
+mrrrt:	rts
+;
+manfdt:	db	$ff,3,1,0
+;
+manlsh:	;right move max & area clear ok
+	lda	#1
+	sta	clrflg
+	rts
+;
+manjmp:
+	lda	mandir
+	and	#4
+	beq	manjrt
+	lda	takflg
+	asl	a
+	tay
+	lda	mnjdtb,y
+	sta	p0+0
+	lda	mnjdtb+1,y
+	sta	p0+1
+	ldy	mjpcnt
+	lda	many
+	clc
+	adc	[p0],y
+	sta	many
+;
+	cmp	#$20	;8
+	bcc	disjmp
+;
+	iny
+	sty	mjpcnt
+	ldx	takflg
+	tya
+	cmp	mnjdmx,x
+	bcc	manj10
+;
+disjmp:	lda	mandir
+	and	#%11111011
+	sta	mandir
+	lda	#0
+	sta	mjpcnt
+manj10:
+	lda	many
+	sec
+	sbc	#($30-$8)
+	jsr	manash
+	cmp	#3
+	bne	manjrt
+manj20:
+	lda	mandir
+	and	#%1111_1011
+	sta	mandir
+	lda	many
+	clc
+	adc	#8
+	and	#$f8
+	sta	many
+manjrt:	rts
+;
+;
+mnjdmx	db	16,20
+;
+mnjdtb:	dw	mnjtbl
+	dw	mnjtb1
+;
+mnjtbl:
+	db	-8,-8,-4,-4,-4,-3,-3
+	db	-2,-2,-2,-1,-1,-1,-1,0,0
+mnjtb1:
+	db	-8,-8,-8,-4,-4,-4,-4,-3,-3,-3
+	db	-2,-2,-2,-2,-1,-1,-1,-1,0,0
+
+mnftbl:	db	0,0,1,1,1,1,2,2,2,3,3,4,4,4,8,8
+;
+;
+manfal:	;hattori ochiru
+	lda	mandir
+	and	#%0010_0000
+	beq	manfrt
+	ldx	mjpcnt
+	lda	many
+	clc
+	adc	mnftbl,x
+	sta	many
+	cpx	#15
+	bcs	manfl0
+	inx		
+manfl0:	stx	mjpcnt
+;
+	lda	miztch
+	bne	manfl4
+	lda	many
+	cmp	#$f0
+	bcc	manfl1
+manfl4:	lda	mandir
+	ora	#$c0
+	sta	mandir
+	lda	#240
+	sta	walkcn
+	ldx	#$0f
+	lda	miztch
+	beq	manfl3	;no mizu ochi
+	ldx	#$2
+manfl3:	txa
+	sta	effcmd
+	lda	#0
+	sta	muscmd
+	rts
+;
+manfl1:	lda	many
+	sec
+	sbc	#($30 - $18)
+	jsr	manash
+	bit	bit1st
+	bne	stand
+	ldx	mizflg
+	beq	manfrt
+	and	#1
+	bne	stand
+manfrt:	ora	miztch
+	sta	miztch
+	rts
+;;
+stand:
+	lda	#0
+	sta	miztch
+	lda	many
+	and	#$f8
+	sta	many
+	lda	mandir
+	and	#%1101_1111
+	sta	mandir
+okuret:	rts
+;
+;
+mncchk:
+	lda	#0
+	ldx	mchky
+	cpx	#192
+	bcs	okuret
+;
+	lda	#0
+	sta	gamadr+1
+;(manxh*256+manxl) / 8 .and. $3f
+	lda	mchkxh
+	lsr	a
+	php
+	lda	mchkxl
+	plp
+	ror	a
+	lsr	a
+	lsr	a
+;	and	#$3f
+	sta	aa
+	asl	a
+	clc
+	adc	aa
+	asl	a
+	rol	gamadr+1
+	clc
+	adc	#low gamen
+	sta	gamadr+0
+	lda	gamadr+1
+	adc	#high gamen
+	sta	gamadr+1
+;
+	lda	mchky
+	lsr	a
+	lsr	a
+	lsr	a
+	pha	;********
+	lsr	a
+	lsr	a
+	tay
+;
+	pla	;********
+	and	#3
+	tax
+;
+	lda	[gamadr],y
+	and	mncmpt,x
+;
+	ldy	mncsfl,x
+	beq	mncssk
+mncslp:	lsr	a
+	dey
+	bne	mncslp
+mcmnrt:
+mncssk:	rts
+;
+mncmpt:
+	db	$c0,$30,$0c,$03
+mncsfl:
+	db	6,4,2,0
+;
+;-----------------------------------------------------------------
+mchman:
+	lda	mandir
+	and	#$80
+	bne	mcmnrt
+	ldy	mchflg	;	lda	mchflg
+	iny		;	cmp	#$ff
+	beq	mcmnrt
+;
+	lda	mchy
+	clc
+	adc	#15-8
+	sec
+	sbc	many
+	cmp	#8+(15-8)
+	bcs	mcmnrt
+;
+	lda	mchxl
+	clc
+	adc	#15
+	tax
+	lda	mchxh
+	adc	#0
+	tay
+	txa
+	sec
+	sbc	manxl
+	tax
+	tya
+	sbc	manxh
+	cpx	#8+15
+	sbc	#0
+	bcs	mcmnrt
+;
+	lda	mchflg
+	cmp	#1
+	beq	mcmnrt
+	cmp	#2
+	bcs	mcmn01
+;
+mcmn02:	ldx	kirflg	;kirigakure
+	bne	mcmnrt
+	ldx	scrdbl
+	bne	mcmnrt
+	jmp	manout
+mcmn01:
+	ldx	mchflp
+	dex
+	cpx	#(255-30)
+	bcs	mcmnrt
+	lda	mchflg
+	cmp	#3
+	beq	mcmn02
+	lda	#$ff
+	sta	mchflg
+	lda	#1
+	jsr	effset
+	jmp	ninent
+;
+;
+;=================================================================
+;
+RIGMAX	equ	$79
+RIGPOS	equ	RIGMAX-1
+;
+;===================================================================
+;
+mandsp:	;hattori hyoji
+;
+	lda	mandir	;mizu & fall
+	and	#$40
+	bne	mcmnrt
+	lda	clrflg	;meet shinzou
+	bne	mand00
+;
+	lda	wrpflg
+	bne	mandrg
+;
+	lda	mandir	;yarare
+	and	#$80
+	bne	mand00
+;
+	lda	mandir
+	lsr	a
+	bcc	mand00
+	and	#1
+	beq	mand00
+mandrg:
+mandr1:
+	lda	manxl
+	sec
+	sbc	scrolh
+	cmp	#RIGMAX
+	bcc	mand00
+;
+mandr0:
+	lda	manxh
+	cmp	#(ARELEN - 1)	;7
+	bcc	scrie
+	lda	manxl
+	cmp	#RIGMAX
+	bcs	mand00
+;
+scrie:
+	jsr	scrlrg
+;
+	lda	scrolh
+	clc
+	adc	hmvdis		;#2	;1********
+	sta	scrolh
+	bcc	mand00
+	inc	scrole
+mand00:
+	lda	wrpflg
+	and	#2
+	beq	*+3
+	rts
+;
+	lda	manxl
+	sec
+	sbc	#4
+	sta	pxl
+	lda	manxh
+	sbc	#0
+	sta	pxh
+	lda	many
+	sta	py
+;
+mand50:	lda	clrflg
+	cmp	#2
+	bne	mand40
+mand70:	ldx	#10
+	jmp	mand10
+;
+mand40:	lda	mandir
+	and	#$80
+	beq	mand30	
+	jmp	mndrw1	;yarare
+;
+mand30:	lda	kirflg
+	beq	mnnkir
+	lda	kircnt
+	cmp	#16
+	bcs	mand20
+	and	#$2	;4
+	bne	mnnkir
+mand20:	ldx	#7
+	lda	manflp
+	and	#2
+	beq	mand10
+	inx	
+	bne	mand10	;<bra>
+;
+mnnkir:	lda	mandir
+	and	#$10
+	beq	mand02
+	lda	tmscnt
+	lsr	a
+	clc
+	adc	#5
+	tax
+	bne	mand10	;<bra>
+;
+mand02:	lda	mandir
+	and	#$24
+	beq	mand01
+	lda	mssflg
+	bne	mand03
+	ldx	#4
+	bne	mand10	;<bra>
+;
+mand03:
+	ldx	#9
+	bne	mand10	;<bra>
+;
+mand01:	lda	kumflg
+	bne	mand0a
+	lda	mandir
+	lsr	a
+	bcc	mand70
+	ldx	manflp
+	jmp	mand10
+mand0a:	ldx	#0
+mand10:
+;	lda	mandir
+;	and	#2
+;	beq	mandrw
+;	txa
+;	clc
+;	adc	#11
+;	tax
+mandrw:	txa
+	sta	p0+1
+	asl	a
+	clc
+	adc	p0+1
+	asl	a
+	clc
+	adc	#low hatchr
+	sta	pptr+0	;	sta	p2
+	lda	#high hatchr
+	adc	#0
+	sta	pptr+1	;	sta	p2+1
+	lda	mandir
+	and	#2
+	lsr	a
+	tax
+	lda	mancol,x
+	sta	pcol	
+	jmp	mandok
+;
+mndrw1:
+	lda	timer
+	and	#16
+	lsr	a
+	lsr	a
+	lsr	a
+	lsr	a
+	tax
+	lda	mancol,x
+	sta	pcol	
+	PTRSET	mnypat,pptr
+;
+mandok:	lda	#2
+	sta	poam
+	jmp	put2x3
+;
+hatchr:
+;LEFT
+;0
+	db	$00,$01,$10,$11,$20,$21	;walk
+	db	$82,$83,$02,$03,$12,$13
+	db	$82,$83,$04,$05,$14,$15
+	db	$00,$01,$10,$11,$20,$21
+;4
+	db	$82,$83,$06,$07,$16,$17	;jump
+;5
+	db	$82,$83,$08,$09,$18,$19	;tama dashi
+	db	$82,$83,$0a,$0b,$1a,$1b
+;7
+	db	$d8,$fd,$d9,$fd,$fd,$fd	;kiriga
+	db	$a9,$fd,$d9,$fd,$fd,$fd
+;9
+	db	$82,$83,$58,$59,$68,$69	;musasabi
+;10
+	db	$78,$79,$7e,$7f,$d7,$fc	;shomen
+;RIGHT
+;	db	$01,$00,$11,$10,$21,$20	;walk
+;	db	$83,$82,$03,$02,$13,$12
+;	db	$83,$82,$05,$04,$15,$14
+;	db	$01,$00,$11,$10,$21,$20
+;;
+;	db	$83,$82,$07,$06,$17,$16	;jump
+;;
+;	db	$83,$82,$09,$08,$19,$18	;tama dashi
+;	db	$83,$82,$0b,$0a,$1b,$1a
+;;
+;	db	$fd,$d8,$fd,$d9,$fd,$fd	;kirigakure
+;	db	$fd,$a9,$fd,$d9,$fd,$fd
+;;
+;	db	$83,$82,$59,$58,$69,$68	;musasabi
+;;
+;	db	$79,$78,$7f,$7e,$fc,$d7	;shoumen
+;
+;manyarare
+mnypat:	db	$5a,$5b,$6a,$6b,$7a,$7b	;yarare
+;mnypt2:	db	$5b,$5a,$6b,$6a,$7b,$7a	;yarare
+;
+;manypt:
+;	dw	mnypt1
+;	dw	mnypt2
+;
+;
+mancol:	db	0,$40
+
+;------------ tama --------------------------------------
+;
+tamini:
+	lda	#0
+	sta	tmgmax
+	ldx	#TAMMAX-1
+	lda	#$ff
+tamilp:	sta	tamafl,x
+	dex
+	bpl	tamilp
+	rts
+;
+;
+TMMDIS	equ	4
+;
+tammov:
+	ldx	#TAMMAX-1
+tmmlop:
+	stx	cc
+	jsr	tamrig
+	jsr	tamlef
+	jsr	tamup
+	jsr	tamtks
+;	
+	ldx	cc
+	dex
+	bpl	tmmlop
+tmmret:	rts
+;
+tamlef:
+	lda	tamafl,x
+	cmp	#$ff
+	beq	tmmlrt
+	bit	bit2st
+	bne	tmmlrt
+	bit	bit0st
+	bne	tmmlrt
+;
+	lda	tamaxl,x
+	sec
+	sbc	#TMMDIS	;4	;2
+	sta	tamaxl,x
+	lda	tamaxh,x
+	sbc	#0
+	sta	tamaxh,x
+;
+	lda	abtfnc
+	cmp	#2
+	beq	tmmlrt
+	lda	manxl
+	sec
+	sbc	tamaxl,x
+	sta	aa
+	lda	manxh
+	sbc	tamaxh,x
+	sta	bb
+	lda	aa
+	cmp	#$40
+	lda	bb
+	sbc	#0
+	bcc	tmmlrt
+	lda	#$ff
+	sta	tamafl,x
+tmmlrt:	rts
+;
+tamrig:
+	lda	tamafl,x
+	cmp	#$ff
+	beq	tmmrrt
+	bit	bit2st
+	bne	tmmrrt
+	bit	bit0st
+	beq	tmmrrt
+;
+	lda	tamaxl,x
+	clc
+	adc	#TMMDIS	;4	;2
+	sta	tamaxl,x
+	lda	tamaxh,x
+	adc	#0
+	sta	tamaxh,x
+;
+	lda	abtfnc
+	cmp	#2
+	beq	tmmrrt
+	lda	tamaxl,x
+	sec
+	sbc	manxl
+	sta	aa
+	lda	tamaxh,x
+	sbc	manxh
+	sta	bb
+	lda	aa
+	cmp	#$40	;+$10
+	lda	bb
+	sbc	#0
+	bcc	tmmrrt
+;	cmp	#ARELEN
+;	bcc	tmmrrt
+	lda	#$ff
+	sta	tamafl,x
+tmmrrt:	rts
+;
+tamup:
+	lda	tamafl,x
+	cmp	#$ff
+	beq	tmmurt
+	and	#$6
+	beq	tmmurt
+;
+	lda	tamay,x
+	sec
+	sbc	#TMMDIS	;2
+	sta	tamay,x
+	bcc	tamued
+	inc	tamacn,x
+	lda	tamacn,x
+	cmp	#$10	
+	bcc	tmmurt
+tamued:	lda	#$ff
+	sta	tamafl,x
+tmmurt:	rts
+;
+tamtks:
+	lda	scrole
+	cmp	#$0f
+	beq	tmtkrt
+	lda	tksedg
+	bne	tmtkrt
+	lda	tksflg
+	cmp	#2
+	bcs	tmtkrt
+	ldx	cc
+	ldy	tamafl,x
+	iny
+	beq	tmtkrt
+;
+	lda	tamay
+	clc
+	adc	#7
+	sec
+	sbc	tksy
+	cmp	#16+7
+	bcs	tmtkrt
+;
+	lda	tamaxl
+	clc
+	adc	#7
+	tay
+	lda	tamaxh
+	adc	#0
+	sta	aa
+	tya
+	sec
+	sbc	tksxl
+	tay
+	lda	aa
+	sbc	tksxh
+	cpy	#16+7
+	sbc	#0
+	bcc	tmtkok	;	bcs	tmtkrt
+tmtkrt:	rts
+;
+tmtkok:	lda	#$ff
+	sta	tamafl,x
+	ldy	tksflg
+	inc	tkscnt
+	lda	tkscnt
+	and	tmtadt,y
+	bne	tmtksn
+	sta	tkscnt
+	inc	tksflg
+tmtksn:	lda	#5
+	jsr	effset
+	lda	tksflg
+	cmp	#2
+	bne	tmtkrt
+;
+	lda	#1
+	jsr	effset
+	lda	tksedg
+	ora	#1
+	sta	tksedg
+;
+	ldx	tksscn
+	inc	tksscn
+	lda	tekbeg
+	bne	tmtksc
+	lda	tmtkfd,x
+	sta	tksbcn
+	rts
+tmtksc:
+	lda	tmtksd,x
+	jmp	scradd
+	
+
+tmtkfd:	db	20,200
+tmtksd:	db	14,5
+;
+tmtadt:	db	31,15
+;
+tamdsp:
+	lda	#$e0
+	sta	bb
+	ldx	#TAMMAX-1
+;
+tamdlp:
+	stx	cc
+	lda	tamotb,x
+	sta	bb
+;
+	ldy	tamafl,x	;lda	tamafl,x
+	iny			;cmp	#$ff
+	beq	tamdsk
+;
+	lda	tamay,x
+	ldy	bb
+	inc	bb
+	jsr	sprput
+;
+	lda	timer
+	and	#2
+	lsr	a
+	clc
+	adc	#$80
+	ldy	bb
+	inc	bb
+	jsr	sprput
+;
+	lda	#0
+	ldy	bb
+	inc	bb
+	jsr	sprput
+;
+	lda	tamaxl,x
+	sec
+	sbc	scrolh
+	sta	dd
+	lda	tamaxh,x
+	sbc	scrole
+	beq	tamd10
+	lda	abtfnc
+	cmp	#2
+	bne	tamd20
+	lda	#$ff
+	sta	tamafl,x
+tamd20:	lda	bb
+	sec
+	sbc	#4
+	sta	bb
+	tay
+	iny
+	sty	bb
+	lda	#$f8
+	bne	tamd11	;<bra>
+;
+tamd10:	lda	dd
+	ldy	bb
+tamd11:	inc	bb
+	jsr	sprput
+;
+tamdsk:	ldx	cc
+	dex
+	bpl	tamdlp
+	rts
+;
+;
+tamotb:	;db	28*4,60*4,29*4,61*4
+	db	30*4,62*4,31*4,63*4
+;
+;
+;--------------------------------------------------------------
+;
+;
+;	ninpou cursor move
+;
+curmov:
+	jsr	ninfls
+	lda	joyone	;1b
+	bit	ninsel	;joybbt
+	bne	curmok
+	lda	#0
+	sta	curmwi	
+	sta	curkrp
+	ldx	curmch
+	beq	crmhom
+	dex
+	bne	crmrst
+crmhom:	lda	#0
+	sta	curpos
+crmrst:	stx	curmch
+	rts
+;
+curmok:	lda	curmwi
+	beq	cmovok	;bne	cmvret
+	tax
+	inx
+	stx	curmwi
+	lda	curkrp
+	bne	cmohfj
+	cpx	#30	;15
+	bcc	cmvret
+	lda	#1
+	sta	curkrp
+	bne	cmovok	;<bra>
+cmohfj:	cpx	#15
+	bcc	cmvret
+cmovok:	lda	#1
+	sta	curmwi
+	lda	#60
+	sta	curmch
+	lda	#9
+	jsr	effset
+	ldx	curpos
+	inx
+	cpx	#NINMAX
+	bcc	cmvskp
+curres:	ldx	#$0	;cursor reset home pos
+cmvskp:	stx	curpos
+cmvret:	rts
+;
+curdsp:
+	lda	#$1c
+	sta	oambuf+128
+	lda	#$fe
+	sta	oambuf+129
+	lda	#$81	;2	;03
+	sta	oambuf+130
+	lda	curpos
+	asl	a
+	asl	a
+	asl	a
+	asl	a
+	clc
+	adc	#$16	;1c
+	sta	oambuf+131
+	rts
+;
+;----------------------------------------------------------------
+;
+;
+manout:
+	lda	mandir
+	ora	#$80
+	sta	mandir
+	lda	#0
+	sta	walkcn
+	sta	lasyfl
+	lda	#7
+	sta	effcmd
+	lda	#0
+	sta	muscmd
+	rts
+;
+;------------------------------------------------------------------
+;
+timups:
+	inc	time
+	lda	#ARETIM	;240
+	cmp	time
+	bcs	timurt
+	sta	time
+	lda	#0
+	sta	timupf
+timurt:	rts
+;
+timmov:
+	lda	demof
+	bne	timmrt
+	lda	wrpflg
+	bne	timmrt
+	lda	timupf
+	bne	timups
+	lda	scrole
+	cmp	#ARELEN-1
+	beq	timmrt
+	lda	timofl
+	bne	timmrt
+	ldx	times
+	inx
+	cpx	#60
+	stx	times
+	bcs	timm10
+timmrt:	rts
+timm10:	lda	#0
+	sta	times
+	dec	time
+	ldx	time	;	lda	time
+	inx		;	cmp	#$ff
+	beq	timout
+	cpx	#11	;	cmp	#10
+	bcs	timmrt
+	lda	#8
+	jmp	effset
+timout:	lda	#0
+	sta	time
+	lda	#1
+	sta	timofl
+	jmp	manout
+;
+;
+;
+

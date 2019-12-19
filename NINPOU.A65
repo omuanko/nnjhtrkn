@@ -1,0 +1,1397 @@
+;
+;
+;	<NINJA HATTORI KUN> ninpou
+;
+;
+NOMAL	equ	0
+KAGEHS	equ	1
+MIDARE	equ	11
+HYPER	equ	4
+KANASH	equ	5
+GIRARU	equ	8
+HIGJMP	equ	2
+MUSASA	equ	9
+KIRIGA	equ	6
+HIBASI	equ	10
+KUMONO	equ	7
+MIZKUM	equ	3
+;
+;
+ninini:	ldx	#NINMAX-1
+	lda	#0
+ninilp:	sta	ninsta,x
+	dex
+	bpl	ninilp
+	inc	ninsta
+	rts
+;
+prenin:
+	ldx	#NINMAX - 1
+prenlp:
+	lda	ninsta,x
+	and	#1
+;	lda	#1	;debug
+	sta	ninsta,x	
+prensk:	dex
+	bpl	prenlp
+;
+	ldx	#0
+	stx	abtfnc
+	stx	nincnt
+	lda	#30	;30
+	sta	tamnxt
+	lda	#8	;16
+	sta	tamrpt
+;
+	ldx	#low (mizflg - takflg)
+	lda	#0
+prenl1:	
+	sta	takflg,x
+	dex
+	bpl	prenl1
+;
+	rts
+;
+;
+ninpsb:
+	pha
+	bit	bit7st
+	beq	ninpjm
+	lda	nincnt
+	beq	ninpjm
+	sec
+	sbc	#1
+	sta	nincnt
+ninpjm:	pla
+	jmp	nnpsub
+;
+;
+ninres:	;ninpou reset
+	ldx	#NINMAX-1
+;
+ninrlp:
+	lda	ninsta,x
+	cmp	#1
+	beq	ninrok
+	dex
+	bne	ninrlp
+	rts
+;
+ninrok:
+	lda	#0
+	sta	ninsta,x
+	inx
+	txa
+	ora	#$80
+	jmp	ninpsb		
+;
+;
+ninent:
+	ldx	#1	;bittbl
+ninelp:	
+	lda	ninsta,x
+;	bit	bit0st
+	beq	nineok
+;	inc	aa
+	inx
+	cpx	#NINMAX
+	bcc	ninelp
+	rts
+;
+nineok:
+	lda	#1
+	sta	ninsta,x
+	inx	
+	txa
+	jmp	ninpsb
+;
+ninfls:	;ninfwk
+	ldx	ninfwk
+	beq	ninfrt
+	lda	#$29
+	dex
+	bne	ninfsk	
+	lda	#0
+	sta	selnfl
+	lda	naksfl
+	beq	ninfs0
+	lda	#$b
+	sta	effcmd
+ninfs0:	lda	#$0f
+ninfsk:	stx	ninfwk
+	sta	colwrk+15
+ninsrt:
+ninfrt:	rts
+;
+ninfst:	lda	#8
+	sta	ninfwk
+	lda	#6
+	sta	effcmd	;	jsr	effset
+	sta	selnfl
+	lda	curpos
+	clc
+	adc	#1
+	ora	#$40
+	jsr	ninpsb
+	jmp	curres
+;
+ninset:
+;
+	lda	joyone
+	bit	tambtn
+	beq	ninpo0
+;
+	ldx	curpos
+	beq	ninp00	;o0
+;
+	lda	scrole
+	cmp	#ARELEN-1
+	beq	ninfrt
+;
+	lda	ninsta,x
+	and	#$3
+	eor	#%0000_0001
+	bne	ninsrt
+;
+	ldx	usemax
+	lda	nincnt
+	cmp	usenin,x	;#3
+	bcs	ninsrt
+;
+	inc	nincnt
+	ldx	curpos
+	stx	cc
+	lda	#2
+	sta	ninsta,x
+	jsr	ninfst
+;
+;	ldy	#2
+;	ldx	cc
+;	cpx	#5
+;	bcs	*+4
+;	ldy	#3
+;	tya
+;	lda	#2
+;	sta	ninsta,x
+;	txa
+	lda	cc
+	asl	a
+	tax
+	INDJMP	nincal,x
+;
+usenin:
+	db	2,3,4,NINMAX
+;
+nincal:	JTBL	ninsrt	;0 nomal
+	JTBL	ninpo1	;1 hyper run
+	JTBL	ninpo6	;2 high jump
+	JTBL	ninpob	;3 mizukumo
+	JTBL	ninpo3	;4 hyper shuriken
+	JTBL	ninpo4	;5 kanashibari
+	JTBL	ninpo8	;6 kirigakure
+	JTBL	ninpoa	;7 kumonori
+	JTBL	ninpo5	;8 shinzou naku
+	JTBL	ninpo7	;9 musasabi
+	JTBL	ninpo9	;10hibashiri
+	JTBL	ninpo2	;11midareuchi
+;
+;
+ninp00:	jsr	chkie
+ninpo0:	;*nomal tama
+	lda	abtfnc	;shuriken shurui
+	cmp	#3
+	bcc	nin0ok	;bcs	nintrt
+	rts
+nin0ok:	asl	a
+	tax
+	INDJMP	nn0vec,x		
+;
+nn0vec:
+	JTBL	tamset
+	JTBL	midgen
+	JTBL	hypers
+;
+ninpo1:	;+hyper run
+	lda	#1
+	sta	hypodr
+	rts
+;
+ninpo2:	;*midare uchi
+	lda	#1	;midareuch
+	sta	abtfnc
+	lda	#0
+	sta	mtmcnt	;midare pos set
+	lda	#$c0
+	sta	midtim	;midara jizoku time
+	rts
+;
+ninpo3:	;*hyper shuriken
+	lda	#2	;hyper shot
+	sta	abtfnc
+	lda	#15
+	sta	tamnxt
+	lda	#4	;8
+	sta	tamrpt
+	lda	#$c0
+	sta	midtim	;hyper jizoku time
+	rts
+;
+ninpo4:	;+kanashibari
+	lda	#$ff
+	sta	kanflg
+	rts
+;
+ninpo5:	;-shinzou naki (girauru)
+	lda	#0
+	sta	shnflg
+	lda	#$b0
+	sta	shiny
+	lda	scrolh
+	clc
+	adc	#$fe
+	sta	shinxl
+	lda	scrole
+	adc	#0
+	sta	shinxh
+	rts
+;
+ninpo6:	;+high jump
+	lda	#1
+	sta	takodr
+	rts
+;
+ninpo7:	;+musasabi
+	ldx	#1
+	stx	mssflg
+	dex
+	stx	msscnt
+	rts
+;
+ninpo8:	;+kirigakure
+	ldx	#1
+	sta	kirflg
+	dex
+	stx	kircnt
+	rts
+;
+ninpo9:	;-hibashiri shishimaru
+	lda	#0
+	sta	dogflg
+	lda	manxl
+	sta	dogxl
+	lda	manxh
+	sta	dogxh
+	lda	#0
+	sta	dogy
+n9r:	rts
+;
+ninpoa:	;kumonori
+	ldx	#1
+	stx	kumflg
+	dex	;ldx	#0
+	stx	kumcnt
+	stx	mnyrps
+	rts
+;
+ninpob:	;mizu kumo
+	lda	#1
+	sta	mizflg
+	rts
+;
+;================================================================
+;
+tamset:
+	lda	joyone	;1a
+	bit	tambtn	;joyabt
+	bne	sttm03
+	lda	#0
+	sta	tmdcnt	;hanasare
+sttm03:	ldx	tmdcnt
+	beq	sttm01
+	dex
+	stx	tmdcnt
+sttm01:	ldx	trptcn
+	beq	sttm02
+	dex
+	stx	trptcn
+sttm02:
+	lda	mandir
+	and	#$10
+	bne	sett10
+;
+sttm00:
+	lda	tmdcnt
+	ora	trptcn
+	bne	settrt	
+	lda	joyone	;1a
+	bit	tambtn	;joyabt
+	beq	settrt
+	lda	trptcn
+	bne	settrt
+	lda	mandir
+	ora	#$10
+	sta	mandir
+	lda	#4	;****
+	sta	tmscnt
+	lda	tamnxt	;#30	;15	;30	;1 sec
+	sta	tmdcnt
+	lda	tamrpt	;#16	;8	;16
+	sta	trptcn
+;
+	jsr	tamgen
+sett10:
+	ldx	tmscnt	
+	dex
+	stx	tmscnt	
+	bpl	settrt
+	lda	mandir
+	and	#$ef
+	sta	mandir
+settrt:
+	rts
+tamgen:	;tama genelate
+	ldx	tmgmax
+;
+tmglop:	ldy	tamafl,x	;	lda	tamafl,x
+	iny			;	cmp	#$ff
+	beq	tamgok
+	dex
+	bpl	tmglop
+	rts
+;
+tamgok:
+	lda	#3
+	jsr	effset
+	lda	mandir
+	lsr	a
+	and	#1
+	sta	tamafl,x
+;
+tamgxy:	lda	manxl
+	clc
+	adc	#4
+	sta	tamaxl,x
+	lda	manxh
+	adc	#0
+	sta	tamaxh,x	
+;
+	lda	many
+	clc
+	adc	#8
+	sta	tamay,x
+;
+	lda	#0
+	sta	tamacn,x
+	rts
+;
+;midare
+midgen:
+	lda	timer
+	and	#3
+	bne	midgn0
+	ldx	midtim
+	dex
+	stx	midtim
+	beq	midend
+midgn0:
+	lda	joyone
+	bit	tambtn
+	beq	mtmgrt
+	ldx	#0
+mtmglp:	ldy	tamafl,x	;	lda	tamafl,x
+	iny			;	cmp	#$ff
+	beq	mtmgok
+	inx
+	cpx	#TAMMAX
+	bcc	mtmglp
+mtmgrt:	rts
+;
+mtmgok:
+	lda	#3
+	jsr	effset
+	ldy	mtmcnt
+	lda	mtmdat,y
+	sta	tamafl,x
+	iny
+	sty	mtmcnt
+	cpy	#5
+	bcc	mtmgos
+	ldy	#0
+	sty	mtmcnt
+mtmgos:	jmp	tamgxy
+;
+midend:	
+	ldx	abtfnc
+	ldy	midedo,x
+	beq	midert
+	lda	#0
+	sta	ninsta,y
+	sta	abtfnc
+	iny
+	tya
+	ora	#$80
+	jsr	ninpsb
+	lda	#30	;30
+	sta	tamnxt
+	lda	#8	;16
+	sta	tamrpt
+midert:	rts	
+;
+mtmdat:
+	db	0,2,4,3,1
+;
+midedo:
+	db	NOMAL,MIDARE,HYPER
+;
+hypers:
+	lda	timer
+	and	#3
+	bne	nin3go
+	ldx	midtim
+	dex
+	stx	midtim
+	beq	midend
+nin3go:	jmp	tamset
+;
+;
+;<<< ninpou >>>
+ninpou:
+kanamv:	;kanasibari
+	ldx	kanflg
+	beq	kansrt
+	dex
+	stx	kanflg
+	bne	kansrt
+	ldx	#KANASH
+	lda	#0
+	sta	ninsta,x
+	lda	#(KANASH + 1) or $80
+	jsr	ninpsb
+;	sta	ninodr
+kansrt:
+kirmov:
+	lda	timer
+	and	#3
+	bne	kirret
+;
+	lda	kirflg
+	beq	kirret
+	ldx	kircnt
+	dex
+	stx	kircnt
+	bne	kirret
+	ldx	#KIRIGA
+	lda	#0
+	sta	kirflg
+	sta	ninsta,x
+	lda	#(KIRIGA + 1) or $80
+	jsr	ninpsb
+;	sta	ninodr	
+kirret:	
+kummov:	lda	timer
+	and	#3
+	bne	kummrt
+	lda	kumflg
+	beq	kummrt
+	ldx	kumcnt
+	dex
+	stx	kumcnt
+	bne	kummrt
+	ldx	#KUMONO
+	lda	#0
+	sta	kumflg
+	sta	ninsta,x
+	lda	#(KUMONO + 1) or $80
+	jsr	ninpsb
+;	sta	ninodr	
+kummrt:
+ninprt:	rts
+;
+;-------------------------------------------------------------
+;
+;<<<< shinzou >>>>
+;
+shnini:
+	lda	#$ff
+	sta	shnflg
+shnmrt:	rts
+;
+;
+shnmov:	;shinzou move
+	lda	shnflg
+	cmp	#$ff
+	beq	shnmrt
+	tax
+	bmi	shnnak
+;
+	and	#1
+	asl	a
+	tax
+	INDCAL	snmvtb,x
+	jmp	shnman
+;
+snmvtb:
+	JTBL	shnlef
+	JTBL	shnrig
+;
+shnnak:
+	lda	timer
+	and	#1
+	bne	shnnrt
+	inc	shncnt
+	beq	shnend
+shnnrt:	rts	
+;
+shnlef:
+	lda	shinxl
+	sec
+	sbc	#2
+	sta	shinxl
+	lda	shinxh
+	sbc	#0
+	sta	shinxh
+;
+	bcc	shnled	
+;
+	lda	shinxl
+	cmp	scrolh
+	lda	shinxh
+	sbc	scrole
+	bcs	shnlrt
+;
+shnled:
+	lda	scrolh
+	sta	shinxl
+	lda	scrole
+	sta	shinxh
+	inc	shnflg
+	lda	shnflg
+	cmp	#6
+	bcs	shnend
+;
+shnlrt:	rts
+;
+shnrig:
+	lda	shinxl
+	clc
+	adc	#2
+	sta	shinxl
+	lda	shinxh
+	adc	#0
+	sta	shinxh
+;
+	lda	shinxl
+	sec
+	sbc	scrolh
+	tax
+	lda	shinxh
+	sbc	scrole
+	cpx	#$f1
+	sbc	#0
+	bcc	shnrrt
+;
+	lda	scrolh
+	clc
+	adc	#$f0
+	sta	shinxl
+	lda	scrole
+	adc	#0
+	sta	shinxh
+	inc	shnflg
+shnrrt:	rts
+;
+shnend:
+	lda	#0
+	sta	effcmd
+	sta	naksfl
+	ldx	#GIRARU
+	lda	#0
+	sta	ninsta,x
+;
+	lda	#(GIRARU + 1) or $80
+	jsr	ninpsb
+;	sta	ninodr
+	lda	#$ff
+	sta	shnflg
+shnert:	rts
+;
+;
+shnman:	;hattori kun tono atari
+	lda	shnflg
+	bmi	shnert	;snmret
+;
+	lda	shiny
+	clc
+	adc	#15
+	sec
+	sbc	many
+	cmp	#24+15
+	bcs	shnert	;snmret
+;
+	lda	shinxl
+	clc
+	adc	#15
+	tax
+	lda	shinxh
+	adc	#0
+	tay
+	txa
+	sec
+	sbc	manxl
+	tax
+	tya
+	sbc	manxh
+	cpx	#16+15
+	sbc	#0
+	bcs	shnert
+snmnok:	lda	#$0b
+	sta	effcmd	;	jsr	effset
+	lda	#1
+	sta	naksfl
+	lda	#$80
+	sta	shnflg
+	sta	shncnt
+	lda	#8
+	jsr	scradd
+;
+	ldx	#TEKMAX-1
+;
+grtklp:	lda	tekflg,x
+	cmp	#$ff
+	beq	grtksk
+	cmp	#16
+	beq	grtksk
+;
+	cmp	#$e
+	bcc	grtkok
+	bne	grtk10
+;kemu
+	lda	tekdir,x
+	ora	#%0100_1000
+	sta	tekdir,x
+	jmp	grtksk
+grtk10:	;haku
+	lda	teksta,x
+	cmp	#$2
+	bne	grtksk
+	tay
+	bne	grtkok
+	lda	#$ff
+	sta	tekflg,x
+	bne	grtksk	;<bra>
+;
+grtkok:	
+	lda	tekflg,x
+	cmp	#1
+	beq	grtkjj	
+	cmp	#15
+	bne	grtkkk
+grtkjj:
+	lda	#0
+	sta	teknof
+;
+grtkkk:	lda	#16
+	sta	tekflg,x
+	lda	#30
+	sta	teksta,x
+;
+grtksk:	dex
+	bpl	grtklp
+;machine ninja
+	lda	mchflg
+	bne	grmcrt
+	lda	#0
+	sta	mchflp
+	inc	mchflg
+grmcrt:
+snmret:	rts
+;
+;
+shndsp:	
+	ldy	shnflg	;	lda	shnflg
+	iny		;	cmp	#$ff
+	beq	snmret
+;
+;	lda	shnflg
+;	and	#1
+;	asl	a
+;	asl	a
+;	asl	a
+;	sta	pptr+0
+;
+	lda	timer
+	and	#4
+;	clc
+;	adc	pptr+0
+	clc
+	adc	#low shnpat
+	sta	pptr+0
+	lda	#0
+	adc	#high shnpat
+	sta	pptr+1
+;
+	lda	shnflg
+	bpl	shnds0
+	lda	#8	;16	
+	clc
+	adc	pptr+0
+	sta	pptr+0
+	lda	#0
+	adc	pptr+1
+	sta	pptr+1
+;
+shnds0:
+	lda	shinxl
+	sta	pxl
+	lda	shinxh
+	sta	pxh
+	lda	shiny
+	sta	py
+	lda	#19	;24	;17
+	sta	poam
+	lda	shnflg
+	ror	a
+	ror	a
+	ror	a
+	and	#$40
+	ora	#$01
+	sta	pcol		
+	jmp	put2x2
+;
+;
+shnpat:
+;left
+	db	$0e,$0f,$1e,$1f
+	db	$2e,$2f,$3e,$3f
+;right
+;	db	$0f,$0e,$1f,$1e
+;	db	$2f,$2e,$3f,$3e
+;naki left
+	db	$2a,$2b,$3a,$3b
+	db	$2c,$2d,$3c,$3d
+;naki right
+;	db	$2b,$2a,$3b,$3a
+;	db	$2d,$2c,$3d,$3c
+
+;
+;
+;-----------------------------------------------------
+;
+;shishimaru
+;
+dogini:
+	lda	#$ff
+	sta	dogflg
+	rts
+;
+dogmov:
+	lda	dogflg
+	cmp	#$ff
+	beq	dogmrt
+	tax
+	beq	dogdwn	;0
+	dex
+	beq	dogmch	;1
+	dex
+	bne	dogmrt
+	jmp	doghbs	;	beq	doghbs	;2
+dogmrt:	rts
+;
+dogdwn:	;dog shutsugen
+	lda	dogy
+	clc
+	adc	#4
+	sta	dogy
+;
+	cmp	#$b0
+	bcc	dgdret
+	ldx	dogflg
+	stx	dogcnt	;dogcnt = 0
+	inx
+	stx	dogflg
+dgdret:	jmp	dogman
+;
+dogmch:	;dog matsu
+	jsr	dogtim
+	beq	dogend
+dogman:	lda	dogy
+	clc
+	adc	#15
+	sec
+	sbc	many
+	cmp	#24+15
+	bcs	dgmret
+;
+	lda	dogxl
+	clc
+	adc	#15
+	tax
+	lda	dogxh
+	adc	#0
+	tay
+	txa
+	sec
+	sbc	manxl
+	tax
+	tya
+	sbc	manxh
+	cpx	#16+15
+	sbc	#0
+	bcs	dgmret
+;
+	lda	#0
+	sta	dogcnt
+	sta	dogdir	
+	sta	dghsta
+	ldx	#2
+	stx	dogflg
+	inx	;lda	#3
+	stx	muscmd
+dgmret:	rts
+;
+dogend:	lda	#$ff
+	sta	dogflg
+	lda	#2
+	sta	muscmd
+	ldx	#HIBASI
+	lda	#0
+	sta	ninsta,x
+	lda	#(HIBASI + 1) or $80
+	jmp	ninpsb
+;
+;
+;dghsta(hibashiri no stat.)
+;bit0:kao no muki,bit1:tikazuku muki,bit2:hibashiri lock
+doghbs:	;dog hibasiri
+	jsr	dogtim
+	beq	dogend
+;
+	lda	many
+	clc
+	adc	#8
+	sta	dogy
+	lda	dghsta	;man to dog no muki o check
+	eor	mandir	;man(1)=dog(1)?
+	and	#2	;sono bit o toridashi
+	beq	dogh10	;onaji nara skip
+;
+	lda	mandir
+	and	#2
+	sta	dghsta
+	lsr	a
+	ora	dghsta
+ 	sta	dghsta
+;
+dogh10:	lda	dghsta
+	bit	bit2st
+	bne	doghst	
+;
+	bit	bit1st
+	bne	dogh1r
+;left mov
+	lda	dogxl
+	sec	
+	sbc	#8
+	sta	dogxl
+	lda	dogxh
+	sbc	#0
+	sta	dogxh
+	bcs	dgh1lo
+	lda	#0
+	sta	dogxl
+	sta	dogxh	
+dgh1lo:	lda	manxl
+	sec
+	sbc	dogxl
+	tax
+	lda	manxh
+	sbc	dogxh
+	bne	dgmwrt
+	cpx	#$20
+	sbc	#0
+	bcc	dgmwrt
+	lda	dghsta
+	ora	#%0000_0100	
+	sta	dghsta
+	jmp	dgmwrt
+dogh1r:
+	lda	dogxl
+	clc
+	adc	#8
+	sta	dogxl
+	tax
+	lda	dogxh
+	adc	#0
+	sta	dogxh
+	cpx	#$f0
+	sbc	#ARELEN-1
+	bcc	dgh1ro
+	lda	#$f0
+	sta	dogxl
+	lda	#ARELEN-1
+	sta	dogxh
+dgh1ro:	
+	lda	dogxl
+	sec
+	sbc	manxl
+	tax
+	lda	dogxh
+	sbc	manxh
+	bne	dgmwrt
+	cpx	#$20
+	sbc	#0
+	bcc	dgmwrt
+	lda	dghsta
+	ora	#%0000_0100	
+	sta	dghsta
+dgmwrt:	rts		
+
+doghst:	;hibashiri lock go no move
+	lda	dghsta
+	and	#2
+	bne	dghstr
+dghstl:	;left stop
+	jsr	tmfrdg	;ret Xreg,brk Areg
+	stx	aa
+	lda	manxl
+	sec
+	sbc	aa	;#$20
+	sta	dogxl
+	lda	manxh
+	sbc	#0
+	sta	dogxh
+	bcs	dghlrt
+	lda	#0
+	sta	dogxl
+	sta	dogxh
+dghlrt:	rts
+;
+dghstr:	;right stop
+	jsr	tmfrdg	;ret Xreg,brk Areg
+	stx	aa
+	lda	manxl
+	clc
+	adc	aa	;#$20
+	sta	dogxl
+	tax
+	lda	manxh
+	adc	#0
+	sta	dogxh
+	cpx	#$f0
+	sbc	#ARELEN-1
+	bcc	doghrt
+	lda	#$f0
+	sta	dogxl
+	lda	#ARELEN-1
+	sta	dogxh
+doghrt:	rts
+;
+;
+dogtim:	lda	timer
+	and	#3
+	bne	dogtrt	;ne
+	dec	dogcnt	
+dogtrt:	rts
+;
+tmfrdg:
+	lda	timer
+	lsr	a
+	lsr	a
+	and	#3
+	tax
+	lda	#$20
+	sec
+	sbc	dposof,x
+	tax
+tmfrrt:	rts
+;
+dogofx:	db	-32,-22,0,22,32,22,0,-22
+dogofy:	db	4,-22,-32,-22,4,22,32,22
+dposof:	db	0,4,8,4
+;
+dogdsp:
+	ldx	dogflg
+	inx
+	beq	tmfrrt	;dogdrt
+;
+	lda	dogflg
+	cmp	#2
+	bcc	dogd00
+	lda	timer
+	and	#2
+	asl	a
+;	tax
+	asl	a
+	asl	a
+	asl	a
+	asl	a
+	ora	#1
+	sta	pcol
+;	txa
+;	clc	;<*nc*>
+;	adc	#4	
+	PTRSET	(dogpat+4),pptr
+	jmp	dogdrw
+;
+dogd00:	lda	timer
+	and	#4
+;	tax
+	asl	a
+	asl	a
+	asl	a
+	asl	a
+	sta	pcol
+;	txa	
+	PTRSET	dogpat,pptr
+dogdrw:	
+;	clc
+;	adc	#low dogpat
+;	sta	pptr+0	;p0+0
+;	lda	#0
+;	adc	#high dogpat
+;	sta	pptr+1	;p0+1
+;
+	lda	dogxl
+	sta	pxl
+	lda	dogxh
+	sta	pxh
+	lda	dogy
+	sta	py
+	lda	#19
+	sta	poam
+	jmp	put2x2
+;
+;
+dogpat:
+;nomal
+	db	$0c,$0d,$1c,$1d
+;	db	$0d,$0c,$1d,$1c
+;hibashiri
+	db	$5c,$5d,$6c,$6d
+;	db	$5d,$5c,$6d,$6c
+;
+;
+;
+;------------------------------------------------------------
+;kumo hyoji
+;
+kumdsp:	;
+	lda	kumflg
+	beq	kumdrt
+;
+	lda	kumcnt
+	cmp	#16
+	bcs	kumds0
+	and	#2
+	bne	kumdrt
+;
+kumds0:
+	lda	manxl
+	sec
+	sbc	scrolh
+	tax
+	lda	manxh
+	sbc	scrole
+	tay
+	txa
+	sec
+	sbc	#4
+	sta	ptposl
+	tya
+	sbc	#0
+	sta	ptposh
+;
+	ldx	#0
+kumdlp:
+	lda	ptposl
+	clc
+	adc	manofx,x
+	sta	aa
+	lda	ptposh
+	adc	#0
+	bne	kmdrsk
+;
+	lda	kumoam,x
+	sta	bb
+;
+	lda	many
+	clc
+	adc	#24
+	ldy	bb
+	inc	bb
+	jsr	sprput
+;
+	lda	timer
+	and	#2
+	lsr	a
+	tay
+	lda	kumpat,y
+	ldy	bb
+	inc	bb
+	jsr	sprput
+;
+	lda	mandir
+	and	#2
+	asl	a
+	asl	a
+	asl	a
+	asl	a
+	asl	a
+	ldy	bb
+	inc	bb
+	jsr	sprput
+;
+	lda	aa
+	ldy	bb
+	jsr	sprput
+;	
+kmdrsk:	inx
+	cpx	#2
+	bcc	kumdlp
+;
+kumdrt:	rts
+;
+kumoam:	db	18*4,50*4
+;
+kumpat:	db	$ba,$ca
+;
+;---------------------------------------------------------------------
+;ie bonus
+;
+spbini:
+	lda	#$ff
+	sta	spbflg
+	rts
+;
+chkie:
+	lda	spbedg
+	bne	ckiert
+	ldx	#9
+ckielp:	lda	ckietb,x
+	cmp	area
+	beq	ckieok
+	dex
+	bpl	ckielp
+ckiert:	rts
+;
+ckieok:	stx	aa
+	txa
+	asl	a
+	clc
+	adc	aa
+	tax
+	lda	manxl
+	and	#$f8
+	cmp	ckiedt+0,x	
+	bne	ckiert
+	lda	manxh
+	cmp	ckiedt+1,x
+	bne	ckiert
+	lda	many
+	and	#$f8
+	cmp	ckiedt+2,x
+	bne	ckiert
+;gen. special bonus
+	lda	#1
+	sta	spbedg
+	lda	#60	;1.0 sec
+	sta	spbstp
+	cpx	#7*3
+	bcs	spbg10
+	lda	spbtbl+0,x
+	sta	spbxl
+	lda	spbtbl+1,x
+	sta	spbxh
+	lda	spbtbl+2,x
+	sta	spby
+;
+	lda	score+6
+	and	#1
+	sta	spbflg
+	rts
+;
+spbg10:
+	lda	manxl
+	clc
+	adc	#$60
+	sta	spbxl
+	lda	manxh
+	adc	#0
+	sta	spbxh
+	lda	#$90
+	sta	spby
+	lda	#2
+	sta	spbflg
+spbbbr:	rts
+;
+ckietb:
+	db	1,4,5,7,9,11,13
+	db	2,8,14
+;
+ckiedt:
+;makimono inrou
+	CKIDB	$14,$c,$68
+	CKIDB	$5e,$6,$88
+	CKIDB	$5b,$6,$48
+	CKIDB	$7d,$7,$88
+	CKIDB	$3d,$b,$48
+	CKIDB	$6d,$5,$88
+	CKIDB	$6d,$8,$38
+;key
+	CKIDB	$9d,$5,$70
+	CKIDB	$4c,$5,$78
+	CKIDB	$d5,$5,$58
+;
+spbtbl:
+	SPBDB	13,12,15
+	SPBDB	15,06,11
+	SPBDB	26,06,13
+	SPBDB	11,07,11
+	SPBDB	09,11,13
+	SPBDB	13,12,15
+	SPBDB	13,08,15
+;
+spbmst:
+	dec	spbstp
+	bne	spbmsk
+	lda	spbflg
+	ora	#$80
+	sta	spbflg
+	bmi	spbmsk	;<bra>
+;
+spbmov:
+	lda	spbflg
+	cmp	#$ff
+	beq	spbbbr
+;
+spbm10:	;x move
+	and	#$80
+	beq	spbmst
+	lda	timer
+	and	#1
+	bne	spbmsk	;20
+	lda	spbxl
+	clc
+	adc	#1
+	sta	spbxl
+	lda	spbxh
+	adc	#0
+	sta	spbxh
+spbm20:	;y move
+	lda	spbstp
+	and	#31
+	tay
+	lda	spby
+	clc
+	adc	rikdly,y
+	sta	spby
+;
+	dec	spbstp
+	bne	spbmrt
+	lda	#$ff
+	sta	spbflg
+;
+spbmsk:
+	lda	spby
+	clc
+	adc	#15-8
+	sec
+	sbc	many
+	cmp	#16+(18-8)
+	bcs	spbmrt
+;
+	lda	spbxl
+	clc
+	adc	#15-4
+	tax
+	lda	spbxh
+	adc	#0
+	tay
+	txa
+	sec
+	sbc	manxl
+	tax
+	tya
+	sbc	manxh
+	cpx	#12+(15-4)
+	sbc	#0
+	bcs	spbmrt
+;
+	lda	#1
+	jsr	effset
+	ldx	spbflg
+	lda	#$ff
+	sta	spbflg
+	txa
+	and	#$7f
+	tax
+	beq	sbmn00
+	dex
+	beq	sbmn10
+	dex
+	beq	sbmn20
+spbmrt:	rts
+;
+sbmn00:
+	lda	#15
+	jsr	scradd
+	jsr	ninent
+	jsr	ninent
+	jsr	ninent
+	jmp	ninent
+;
+sbmn10:
+	lda	#16
+	jsr	scradd
+	lda	#1
+	sta	timupf
+;	lda	#ARETIM
+;	sta	time
+	lda	#9
+	sta	mandmg
+	rts
+;
+sbmn20:
+	lda	#1
+	sta	wrpflg
+	lda	hmvdis
+	sta	nowdis
+	lda	#9
+	sta	muscmd
+	jmp	enmini
+;
+spbdsp:
+	lda	spbflg
+	cmp	#$ff
+	bne	spbdok
+spbdrt:	rts
+spbdok:	and	#$7f
+	tax
+	asl	a
+	asl	a
+	clc	
+	adc	#low spbpat
+	sta	pptr+0
+	lda	#0
+	adc	#high spbpat
+	sta	pptr+1
+	lda	spbxl
+	sta	pxl
+	lda	spbxh
+	sta	pxh
+	lda	spby
+	sta	py
+	lda	#2
+	sta	pcol
+	lda	#26
+	sta	poam
+	jmp	put2x2	
+;
+;
+;
+spbpat:
+	db	$da,$db,$dc,$dd	;super makimono
+	db	$fa,$fb,$ee,$ef	;inrou
+	db	$b9,$8f,$de,$df	;key
+;
+

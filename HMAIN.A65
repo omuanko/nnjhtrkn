@@ -1,0 +1,2036 @@
+
+;
+;	<NINJA HATTORI KUN>  for  FAMILY COMPUTER
+;
+;
+	if	debug = 1
+	ORG	$ed			; for debug
+	jmp	nmivec			; for debug
+;
+	ORG	DEBSTR			;$a000
+;
+start:	nop
+	cld
+;
+	else
+;
+	ORG	$fffa
+	dw	nmivec			; nmi vector
+	dw	start			; reset vector
+	dw	irqvec			; irq vector
+;
+	ORG	ROMSTR
+;
+start:	sei
+	cld
+;
+	lda	#$18
+	sta	creg0
+	lda	stareg
+strlp0:	lda	stareg
+	bpl	strlp0
+strlp1:	lda	stareg
+	bpl	strlp1
+;
+	endif
+;
+gstart:	ldx	#$ff
+	txs
+;
+tstart:
+	ldx	#0
+	txa
+memcl0:	sta	$0,x
+	inx
+	cpx	#$ed
+	bne	memcl0
+;
+	lda	#2
+	sta	$1
+	ldy	#0
+	ldx	#6
+
+	lda	#0
+memcl1:	sta	[$0],y
+	iny
+	bne	memcl1
+	inc	$1
+	dex
+	bne	memcl1
+;
+;	jmp	starta
+starta:
+	jsr	init
+;
+	jsr	hscset
+	jsr	scrset
+	lda	#0
+	sta	gamef
+	sta	nanido
+	sta	left
+;
+first:
+title:
+;
+	lda	#1
+	sta	demof
+	jmp	gamovr
+;
+;
+nmivec:	; nmi cmd
+;
+	if	debug = 1
+	cli
+	endif
+;
+	ALLPSH
+;
+sprdma:	lda	#0
+	sta	oamadr
+	lda	#high oambuf
+	sta	dmabnk			; sprite dma
+;
+	lda	#0
+	sta	mainjf
+;
+	jsr	stctbl	;stcobj
+	jsr	totwrt
+	lda	gamef
+	bne	gamnmi
+	jsr	scrpr1
+	jsr	scrrst
+	jmp	nmiend
+gamnmi:
+	jsr	scrprt
+	jsr	ninwrt
+	jsr	scrrst
+;
+	lda	screnb
+	and	#1
+	beq	nmiend
+	lda	scrolh
+	and	#1
+	bne	nmiend
+	lda	scrolh
+	and	#6
+	tax
+	INDCAL	nmijbl,x
+nmiend:
+nmskp:
+;------------------------------------------------------
+	jsr	joyred
+;-----------------------------------------------
+	inc	timer	; gen. timer move
+	dec	demtim	;demo ni hairu time
+;-----------------------------------------------
+;
+	jsr	music
+	jsr	effect
+	lda	gamef
+	beq	nmie3
+;
+;--------------------------------------------------------
+;scroll timing
+nmie1:
+	lda	stareg
+	and	#$40
+	bne	nmie1
+nmie2:
+	lda	stareg
+	and	#$40
+	beq	nmie2
+;
+	ldx	scrolh		;home pos scroll h
+	ldy	#SCRLV		;/////////////// v
+	lda	scrole
+	and	#1
+	ora	creg0m
+	sta	creg0		;set ctrl0
+	stx	scrreg		;set h scrl
+	sty	scrreg		;set v scrl	
+;
+;------------------------------------------------------------
+nmie3:
+	ALLPLU	
+irqvec:	rti
+;
+joyred:	lda	#1		; joy pad data read 
+	sta	joyrgt
+	lda	#0
+	sta	joyrgt
+;
+	sta	joyone
+	sta	joytwe
+;
+joy1rd:	ldx	#8
+;
+joy1lp:
+	lda	joyrgt
+	and	#3
+	lsr	a
+	rol	joyone
+	ora	joyone
+	sta	joyone
+	dex
+	bne	joy1lp
+;
+joy2rd:	ldx	#8
+joy2lp:
+	lda	joylft
+	and	#1
+	lsr	a
+	rol	joytwe
+	dex
+	bne	joy2lp
+	rts
+;
+nmijbl:
+	JTBL	putcol
+	JTBL	recscr	;set1	;putchr
+	JTBL	reccol	;set2	;nojob0
+	JTBL	putchr	;nojob1
+;
+putcol:	jsr	clonpt
+	lda	#0
+	sta	screnb
+	jmp	scrrst
+;
+putchr:	jsr	olnput
+scrrst:	ldx	hscrl0	;#0		;home pos scroll h
+	ldy	#SCRLV		;/////////////// v
+	stx	scrreg		;set h scrl
+	sty	scrreg		;set v scrl	
+	lda	hscrl1
+	and	#1
+	ora	creg0m	
+	sta	creg0		;set ctrl0
+rcclrt:	rts
+;
+reccol:	lda	screnb
+	bit	bit1st
+	beq	rcclrt
+	and	#$fd
+	sta	screnb
+	jmp	ITARC2
+;
+recscr:
+	lda	screnb
+	bit	bit2st
+	bne	rcclrt
+	ora	#4
+	sta	screnb
+	jmp	ITAREC
+;
+setadr:	;	vram adrs set
+	;	high a reg , low x reg
+	sta	vramad		;set high
+	stx	vramad		;set low
+	rts
+;
+init:
+	lda	#CREG0D
+	sta	creg0m
+	lda	#0
+	sta	scrolh
+	sta	scrole
+	sta	hscrl0
+	sta	hscrl1
+	sta	effcmd
+	sta	muscmd
+	sta	pause
+;
+	clc
+	lda	#$80
+	ldx	#7
+bitlop:	sta	bittbl,x
+	ror	a
+	dex
+	bpl	bitlop
+;
+	jsr	sprini
+	jsr	soures
+	jmp	musini
+;
+filvrm:
+	lda	#SPCCOD
+	bne	clssub	;<bra>
+;
+cls:	;clear screen
+	lda	#CLRCOD
+clssub:
+	sta	clsdat
+	lda	#$20			; vram address 2000h
+	ldx	#0
+	jsr	setadr
+	ldy	#$08
+	ldx	#$00
+	lda	clsdat		;#CLRCOD		;#$20			; space code (20h)
+	jsr	filvs
+;
+	lda	#$23
+	ldx	#$c0			; clear area color (fill 00h)
+	jsr	setadr
+	ldx	#$40
+	ldy	#1
+	lda	#$ff	;00			; fill data 00h
+	jsr	filvs
+;
+	lda	#$27
+	ldx	#$c0
+	jsr	setadr
+	ldx	#$40
+	ldy	#1
+	lda	#$ff
+;
+filvs:	sta	vramdt
+	dex
+	bne	filvs
+	dey
+	bne	filvs
+	rts
+;
+rnd:	lda	seed1
+	rol	a
+	rol	a
+	eor	#$41
+	rol	a
+	rol	a
+	eor	#$93
+	adc	seed2
+	sta	seed1
+	rol	a
+	rol	a
+	eor	#$12
+	rol	a
+	rol	a
+	adc	seed3
+	sta	seed2
+	adc	seed1
+	inc	seed3
+	bne	endrnd
+	pha
+	lda	seed4
+	clc
+	adc	#29
+	sta	seed4
+	pla
+endrnd:	eor	seed4
+	rts
+;
+scrnon	;vram on & nmi on
+	jsr	nmion
+vramon:
+	jsr	sync			; disp on
+	lda	#VRMOND
+	jmp	creg1s
+;
+scrnof:	;vram off & nmi off
+	jsr	nmioff
+vramof:
+	jsr	sync
+	lda	#VRMOFD
+creg1s:
+	sta	creg1
+creg1t:
+	sta	creg1m
+	rts
+;
+sprini:	ldy	#0
+	lda	#$f8
+stblfl:	sta	oambuf,y
+	iny
+	bne	stblfl
+	rts
+;
+sync:	lda	stareg
+	bmi	sync
+sync1:	lda	stareg			; wait v-blank
+	bpl	sync1
+	rts
+;
+nmion:	jsr	sync
+	lda	creg0m
+	ora	#$80
+	bne	creg0s
+;
+nmioff:
+nmiof1:	lda	creg0m
+	and	#$7f
+creg0s:	sta	creg0m
+	sta	creg0
+	rts
+;
+stctbl:	;set color code gen.
+	lda	#$3f
+	ldx	#$00
+	ldy	#32
+	jsr	setadr
+cgstlp:	lda	colwrk,x
+	sta	vramdt
+	inx
+	dey
+	bne	cgstlp
+	lda	#$3f
+	sta	vramad
+	lda	#0
+	sta	vramad
+	sta	vramad
+	sta	vramad
+	rts
+;
+trncol:	;col data o col work ni okuru
+	ldy	#$31
+tclp:
+	lda	[indexr],y
+	sta	colwrk,y
+	dey
+	bpl	tclp
+	rts
+;
+sprput:
+	pha
+	lda	timer
+	and	#1
+	beq	sprp0	;	bne	sprp1
+	tya
+	eor	#$80
+	tay
+sprp0:	pla
+	sta	oambuf,y
+	rts	
+
+
+;
+;	color genelater table
+;
+tilcol:	;title color
+	db	$22,$25,$30,$0f,$22,$20,$20,$22
+	db	$22,$20,$20,$22,$22,$20,$20,$22
+	db	$22,$20,$20,$22,$22,$20,$20,$22
+	db	$22,$20,$20,$22,$22,$20,$20,$22
+;
+tilare:	;area hyoji
+	db	$1a,$25,$30,$1a,$1a,$20,$20,$1a
+	db	$1a,$20,$20,$1a,$1a,$20,$20,$1a
+	db	$1a,$30,$27,$03,$1a,$30,$36,$16
+	db	$1a,$30,$27,$0f,$1a,$30,$27,$0f
+;	db	$1a,$20,$20,$1a,$1a,$30,$36,$16
+;	db	$1a,$30,$27,$0f,$1a,$30,$27,$0f
+;
+colgen:	;main game
+	db	$31,$2a,$1a,$0f,$31,$17,$27,$0f
+	db	$31,$22,$30,$0f,$31,$10,$20,$0f
+	db	$31,$30,$27,$03,$31,$30,$36,$16
+	db	$31,$30,$27,$0f,$31,$30,$36,$13
+;
+;
+scradd:	;score set 
+	stx	savex
+	sty	savey
+	ldx	demof
+	beq	*+5
+	jmp	scrart	;jnz
+	ldx	scrdbl
+	beq	scrad2
+	sta	savscr
+	jsr	scrad2
+	lda	savscr
+scrad2:	asl	a
+	asl	a
+	tax
+	ldy	#6
+	clc
+	php
+scralp:	plp
+	lda	score,y
+	adc	scrdat,x
+	sta	score,y
+	sec
+	sbc	#10
+	bcc	scra0
+	sta	score,y
+scra0:	php
+	inx
+	dey
+	cpy	#3
+	bcs	scralp
+;
+	plp
+scrlp0:	lda	score,y
+	adc	#0
+	sta	score,y
+	sec
+	sbc	#10
+	bcc	scra1
+	sta	score,y
+scra1:	dey
+	bpl	scrlp0
+;
+	bcc	scrcmp
+allque:	;score max 99999990
+	lda	#9
+	ldx	#7
+allqlp:	sta	score,x
+	sta	hscore,x
+	dex
+	bpl	allqlp
+	jmp	scrart	;	rts
+;
+scrcmp:	ldx	#0
+scrcml:	lda	score,x
+	cmp	hscore,x
+	bcc	scrret
+	bne	hsctrn
+	inx
+	cpx	#7
+	bcc	scrcml
+;
+hsctrn:	ldx	#6
+hsctrl:	lda	score,x
+	sta	hscore,x
+	dex
+	bpl	hsctrl
+;	
+scrret:
+extchk:	;extend check
+	lda	twoflg
+	bne	extc01
+	lda	score+3
+	cmp	#2
+	bne	extc01
+	jsr	extinc
+	lda	#1
+	sta	twoflg
+extc01:	lda	score+3
+	cmp	#8
+	bne	extcrt
+	lda	eigflg
+	bne	scrart	;extc03
+	jsr	extinc
+	lda	#1
+	sta	eigflg
+	bne	scrart	;<bra>
+extcrt:	lda	#0
+	sta	eigflg
+scrart:	ldx	savex
+	ldy	savey
+	rts
+;
+extinc:
+	lda	#1
+	sta	lfeodr
+	inc	left
+	lda	left
+	cmp	#11	;100
+	bcc	extirt
+	dec	left
+	lda	#0
+	sta	lfeodr
+extirt:	rts
+;
+SCRDB	MACRO	df,dt,ds,df
+	db	%4,%3,%2,%1
+	ENDM
+;
+scrdat:
+	SCRDB	0,0,0,0	;0
+	SCRDB	0,0,4,0	;1
+	SCRDB	0,1,0,0	;2
+	SCRDB	5,0,0,0	;3
+	SCRDB	0,0,0,3	;4
+	SCRDB	0,2,0,0	;5
+	SCRDB	0,4,0,0	;6
+	SCRDB	0,6,0,0	;7
+	SCRDB	0,8,0,0	;8
+	SCRDB	0,0,0,2	;9
+	SCRDB	0,0,0,4	;10
+	SCRDB	0,0,0,6	;11
+	SCRDB	0,0,0,8	;12
+	SCRDB	0,0,1,0	;13
+	SCRDB	0,0,2,0	;14
+	SCRDB	0,0,8,1	;15
+	SCRDB	1,0,0,0	;16
+	SCRDB	0,0,0,5	;17
+	SCRDB	0,0,0,1	;18
+;
+scores:	
+	lda	#SPCCOD
+	sta	leftb+0 
+	ldx	#$2f
+	lda	left
+	sec
+scsllp:	inx
+	sbc	#10
+	bcs	scsllp
+	adc	#'0'+10
+	sta	leftb+1
+	cpx	#'0'
+	beq	scslsk
+	stx	leftb+0	
+scslsk:
+	ldx	#6
+scrslp:	lda	score,x
+	clc
+	adc	#$30
+	sta	scoreb,x
+	dex
+	bpl	scrslp
+;
+	ldx	#6
+scrhlp:	lda	hscore,x
+	clc
+	adc	#$30
+	sta	hscreb,x
+	dex
+	bpl	scrhlp
+;
+	lda	time
+	ldx	#100
+	stx	aa
+	jsr	numsub
+	stx	timeb+2
+	ldx	#10
+	stx	aa
+	jsr	numsub
+	stx	timeb+1
+	clc
+	adc	#$30
+	sta	timeb+0
+;
+	PTRSET	scoreb,p0
+	jsr	zerosp
+	PTRSET	hscreb,p0
+;
+zerosp:
+	ldy	#0
+zerolp:	lda	[p0],y
+	cmp	#$30
+	bne	zerosk
+	lda	#SPCCOD
+	sta	[p0],y
+	iny
+	cpy	#6
+	bcc	zerolp
+zerosk:	rts
+;
+numsub:	ldx	#$2f
+numslp:	inx
+	sec
+	sbc	aa
+	bcs	numslp
+	clc
+	adc	aa
+	rts
+;
+scrprt:
+;power
+	lda	#high($2000+32*3+29)
+	ldx	#low($2000+32*3+29)
+	sta	vramad
+	stx	vramad
+	lda	mandmg
+	clc
+	adc	#$30
+	sta	vramdt	
+;time
+	lda	#high($2000+32*2+27)
+	ldx	#low($2000+32*2+27)
+	sta	vramad
+	stx	vramad
+	ldy	#2
+	lda	timofl
+	bne	upswrt
+timdrl:	lda	timeb,y
+	sta	vramdt
+	dey
+	bpl	timdrl
+	bmi	scrpr1	;<bra>
+;
+upswrt:	lda	ups,y	;x
+	sta	vramdt
+	dey	;	dex
+	bpl	upswrt
+;score
+scrpr1:	lda	#high($2000+32+2)	;8)
+	ldx	#low($2000+32+2)	;8)
+	sta	vramad
+	stx	vramad
+	ldx	#0
+	ldy	#7
+scrplp:	lda	scoreb,x
+	sta	vramdt
+	inx
+	dey
+	bne	scrplp
+	lda	#'0'
+	sta	vramdt
+;high score
+	lda	#high($2000+32+12)	;20)
+	ldx	#low($2000+32+12)	;20)
+	sta	vramad
+	stx	vramad
+	ldx	#0
+	ldy	#7
+topplp:	lda	hscreb,x
+	sta	vramdt
+	inx
+	dey
+	bne	topplp
+	lda	#'0'
+	sta	vramdt
+;left
+	lda	#high($2000+32*1+25)	;20)
+	ldx	#low($2000+32*1+25)	;20)
+	sta	vramad
+	stx	vramad
+	lda	leftb+0
+	sta	vramdt
+	lda	leftb+1
+	sta	vramdt
+	rts
+;
+ups:	db	'   '
+;
+ninwrt:	;ninpou status write
+	ldx	nngptr
+	cpx	nnpptr
+	beq	nwret
+;
+	lda	nincmd,x
+	sta	ninodr
+	inx
+	txa
+	and	#7
+	sta	nngptr
+;
+	lda	#$20
+	sta	vramad	;vram adrs high set
+;
+	lda	ninodr
+	and	#$3f
+	asl	a
+	clc
+	adc	#$40	;3e
+	tay
+	sta	vramad	;vram adr low set
+	lda	ninodr	;	txa
+	asl	a
+	asl	a
+	tax
+;
+	lda	ninodr
+	and	#$c0
+	beq	ninw00
+	bpl	ninw01
+	ldx	#0
+	beq	ninw00	;<bra>
+ninw01:
+	ldx	#13*4
+ninw00:
+	lda	ninchr,x
+	sta	vramdt
+	lda	ninchr+1,x
+	sta	vramdt
+	lda	#$20
+	sta	vramad	;vram adrs high set
+	tya
+	clc
+	adc	#$20
+	sta	vramad	;vram adrs low set
+	lda	ninchr+2,x
+	sta	vramdt
+	lda	ninchr+3,x
+	sta	vramdt			
+nwret:
+	rts
+;
+nnpsub:	
+	stx	savex
+	ldx	nnpptr
+	sta	nincmd,x
+	inx
+	txa
+	and	#7
+	sta	nnpptr
+	ldx	savex
+	rts
+;
+ninchr:
+	db	$c0,$c1,$d0,$d1	;0
+	db	$e4,$e5,$f4,$f5	;1 normal
+	db	$c8,$c9,$d8,$d9	;2 hyper run
+	db	$ea,$eb,$fa,$fb	;3 high jump
+	db	$cc,$cd,$dc,$dd	;4 mizkum
+	db	$e2,$e3,$f2,$f3	;5 hyper shuriken
+	db	$c4,$c5,$d4,$d5	;6 kanashibari
+	db	$c2,$c3,$d2,$d3	;7 kirigakure
+	db	$e6,$e7,$f6,$f7	;8 kumonori
+	db	$e8,$e9,$f8,$f9	;9 shizou naki
+	db	$e0,$e1,$f0,$f1	;10mussabi
+	db	$c6,$c7,$d6,$d7	;11shishimaru
+	db	$ca,$cb,$da,$db	;12midareuch
+	db	$ec,$ed,$fc,$fd	;13used !
+;		
+scrbug:	jsr	sprini
+scrspr:	;scroll position timing
+	ldx	#3
+scrspl:	lda	scrtdt,x
+	sta	oambuf,x
+	dex
+	bpl	scrspl
+	rts
+scrtdt:
+	db	$20+15,$ff,$20,$10
+;
+hscset:	;high score set
+	ldx	#1
+chkfir:	lda	hscpro,x
+	cmp	okuno,x
+	bne	sethsc
+	dex
+	bpl	chkfir
+	rts
+sethsc:
+	ldx	#1
+hptrn:	lda	okuno,x
+	sta	hscpro,x
+	dex
+	bpl	hptrn	
+	ldx	#6
+	lda	#0
+hscslp:	sta	hscore,x
+	dex
+	bpl	hscslp
+	lda	#2
+	sta	hscore+3
+	rts
+;
+okuno:	db	'ok'
+;
+scrset:
+	ldx	#6
+	lda	#0
+scrclp:	sta	score,x
+	dex
+	bpl	scrclp
+	rts
+;
+gamesc:
+	lda	#high($2000+32*3+27)
+	ldx	#low($2000+32*3+27)
+	jsr	setadr
+	lda	#'P'
+	sta	vramdt
+	lda	#$3a
+	sta	vramdt
+;
+	lda	#high($2000+32*2+26)
+	ldx	#low($2000+32*2+26)
+	jsr	setadr
+	lda	#$ce	;mini clock
+	sta	vramdt
+;
+scmsst:	PTRSET	scrmes,indexr
+	jmp	mesprt
+;
+scrmes:
+	dw	$2000+4	;start adr.
+	db	'SCORE'
+	ECHO	2
+	db	SPCCOD
+	ENDM
+	db	'HIGH',SPCCOD,'SCORE'
+	ECHO	3
+	db	SPCCOD
+	ENDM
+	db	'LEFT'	
+	db	0
+;
+;<======================== game start ============================>
+newgam:	jsr	menu	;key in wait
+	jsr	scrset
+	ldx	#0
+	stx	point
+	stx	eigflg
+	stx	twoflg
+	stx	tiksuu
+	stx	grade
+	stx	grade+1
+	stx	area
+	stx	scesav
+	stx	spbedg
+	stx	tekbeg
+	stx	usemax
+	stx	tksedg
+	stx	tksscn
+	stx	bosget
+	inx
+	stx	grade+2
+;
+	ldx	#9
+	stx	mandmg
+;
+	jsr	ninini	;ninpou init
+;
+	lda	demof
+	bne	maingm
+regame:
+	jsr	scrnof
+;
+	lda	creg0m
+	and	#$f7
+	sta	creg0m
+;
+	jsr	sprini
+	PTRSET	tilare,indexr
+	jsr	trncol
+;	jsr	stctbl
+	jsr	strtms
+	jsr	scrnon
+	jsr	strtwi
+maingm:	;
+	jsr	scrnof
+	lda	#0
+	sta	scrolh
+	lda	scesav
+	sta	scrole
+	lda	creg0m
+	and	#$f7
+	sta	creg0m
+	PTRSET	colgen,indexr
+	jsr	trncol
+	jsr	bdcset
+	jsr	filvrm
+	jsr	gamesc
+	jsr	fscrst
+;
+	jsr	prenin
+;
+	lda	#ARETIM
+	sta	time
+	lda	#0
+	sta	nnpptr
+	sta	nngptr
+	sta	clrflg
+	sta	ovrflg
+	sta	times	
+	sta	timofl
+	sta	scrdbl
+	sta	snmflg
+;		
+	ldx	#NINMAX-1
+;
+ninwlp:
+	stx	cc
+	lda	ninsta,x
+	and	#1
+	tay
+	inx
+	txa
+	ora	nnword,y
+	jsr	nnpsub
+	jsr	ninwrt
+	ldx	cc
+	dex
+	bpl	ninwlp			
+ninoe:
+	jsr	scrnon
+;
+	jsr	objini
+	jsr	spbini	;special bonus
+	jsr	tksini
+;
+	lda	#2
+	sta	muscmd
+;
+	lda	#1
+	sta	gamef
+	jsr	rikadd
+;
+gamelp:	;	main loop !!
+;
+	jsr	scrbug	;scroll timing
+	jsr	demkey	;domo key
+;
+	if	satsu = 1
+	jsr	pictur	;satsuei pause
+	endif
+;
+	jsr	matsu	;pause
+;
+	lda	ovrflg
+	beq	*+5
+	jmp	gamovr
+	lda	clrflg
+	beq	*+5
+	jmp	menclr
+;
+gameok:
+	jsr	curmov
+	jsr	manmov
+	lda	wrpflg
+	bne	game10
+;
+	jsr	tekmov
+	jsr	mchmov
+	jsr	mismov
+	jsr	shnmov	;shinzou
+	jsr	dogmov
+	jsr	tammov
+	jsr	ninpou
+	jsr	boumov
+	jsr	jinmov
+	jsr	tikmov
+	jsr	rikmov
+	jsr	spbmov
+	jsr	tksmov
+	jsr	bosmov
+;
+
+game10:
+;
+	jsr	timmov
+;
+;	jsr	sprini	;sprtbl init
+	jsr	mandsp
+	lda	wrpflg
+	bne	game20
+	jsr	tekdsp
+	jsr	mchdsp
+	jsr	misdsp
+	jsr	shndsp
+	jsr	tamdsp
+	jsr	dogdsp
+	jsr	kumdsp
+	jsr	boudsp
+	jsr	jindsp
+	jsr	tikdsp
+	jsr	rikdsp
+	jsr	spbdsp
+	jsr	tksdsp
+	jsr	bosdsp
+;
+game20:
+	jsr	curdsp
+;
+;	jsr	scrspr	;scroll timing
+;
+	jsr	scores	;score set
+;
+	jsr	lfechk	;extend sound order
+;
+	jsr	mainwi
+	jmp	gamelp
+;
+;
+;
+mainwi:	;v-dsp wait
+main0:	lda	mainjf
+	pha
+	beq	main3
+main1:	lda	mainjf
+	bne	main1
+main3:	lda	#1
+	sta	mainjf
+	pla
+	beq	main0	
+	rts
+;
+lfechk:	lda	lfeodr
+	beq	lferet	
+	lda	#$d
+	jsr	effset
+lferet:	lda	#0
+	sta	lfeodr
+;	rts
+;
+bdcset:
+	lda	area
+	lsr	a
+	lsr	a
+	tax
+	lda	bdcdat,x
+	ldy	#28
+bdclop:	sta	colwrk,y
+	dey
+	dey
+	dey
+	dey
+	bpl	bdclop
+	rts	
+;
+bdcdat:	db	$31,$34,$3b,$0c
+;
+objini:	jsr	manini
+enmini:	jsr	tamini
+	jsr	shnini
+	jsr	dogini
+	jsr	tekini
+	jsr	misini
+	jsr	bouini
+	jsr	mchini
+	jsr	jinini
+	jsr	bosini
+	jmp	tikini
+;
+	if	satsu = 1
+pictur:	
+	lda	joytwe
+	and	#$cf
+	bne	pictur
+	rts
+	endif
+;
+matsu:	;pause
+	lda	joyone
+	bit	strbtn
+	beq	pauret
+	lda	#1
+	sta	pause	;music stop
+	lda	#$0e
+	sta	effcmd
+pau1:	lda	joyone
+	bit	strbtn
+	bne	pau1
+	jsr	mainwi
+	jsr	sprini
+	jsr	scrspr	;scroll timing
+	lda	creg0m
+	ora	#$08
+	sta	creg0m
+	jsr	paudsp
+;
+paulop:
+	lda	joyone
+	and	#$10
+	beq	paulop
+;
+pauend:
+	jsr	mainwi
+	jsr	sprini
+	jsr	scrspr
+	lda	creg0m
+	and	#$f7
+	sta	creg0m
+	lda	#0
+	sta	pause
+pau3:	lda	joyone
+	bit	strbtn
+	bne	pau3
+pauret:
+	rts
+;
+demkey:
+	lda	demof
+	beq	demrt
+	lda	joyone
+	and	#$30
+	bne	demend
+	lda	#$41
+	sta	joyone
+demrt:	rts
+demend:	ldx	#1
+	stx	ovrflg
+	dex
+	stx	joyone
+	rts	
+;
+menu:
+	lda	joyone
+;	and	#$30
+	bne	menu
+	ldx	#0
+	stx	p0
+	dex
+	stx	demtim
+menulp:	lda	joyone
+	bit	strbtn
+	bne	menurt
+	lda	demtim
+	beq	demook
+	jsr	levset
+	jmp	menulp
+menurt:	lda	#3
+	sta	left
+	rts
+;
+demook:	ldx	#1
+	stx	demof
+	stx	pause
+	jmp	sprini
+;
+levset:
+	lda	joyone
+	and	#$3
+	beq	levsrt
+	ldx	p0
+	bne	levsr0
+	inc	p0
+	ldx	#$ff
+	stx	demtim
+	bit	rigbtn
+	bne	levrig
+levlef:	ldx	nanido
+	dex
+	bmi	levsr0
+	stx	nanido
+	jmp	levsr0
+levrig:	ldx	nanido
+	inx
+	cpx	#4
+	bcs	levsr0
+	stx	nanido
+	jmp	levsr0
+levsrt:	lda	#0
+	sta	p0
+levsr0:	lda	#$80
+	sta	oambuf+4
+	lda	nanido
+	clc
+	adc	#$31
+	sta	oambuf+5
+	lda	#0
+	sta	oambuf+6
+	lda	#$98
+	sta	oambuf+7
+;
+levwrt:	ldx	#4
+	ldy	#8
+	lda	#$88
+	sta	aa
+levwlp:
+	lda	#$80
+	sta	oambuf+0,y
+	lda	levmes,x
+	sta	oambuf+1,y
+	lda	#0
+	sta	oambuf+2,y
+	lda	aa
+	sta	oambuf+3,y
+	lda	aa
+	sec
+	sbc	#8
+	sta	aa
+	iny
+	iny
+	iny
+	iny
+	dex
+	bpl	levwlp
+	rts		
+;
+levmes:	db	'LEVEL'
+;
+strtms:
+	jsr	cls
+	PTRSET	ames,indexr
+	jsr	mesprt
+	PTRSET	letmes,indexr
+	jsr	mesprt
+	jsr	aremgt
+	jsr	scores
+	jsr	scmsst
+	jmp	scrpr1
+;
+ames:	dw	$2000+(32*8+12)
+	db	'AREA',0
+;
+letmes:	dw	$2000+(32*11+12)
+	db	'LET',$27,'S',SPCCOD,'GO',0
+;
+clemgt:
+	ldx	#low ($2000+32*6+23)
+	lda	#high ($2000+32*6+23)
+	bne	aermgs	;	jmp	aermgs
+aremgt:
+	ldx	#low ($2000+32*8+18)
+	lda	#high ($2000+32*8+18)
+aermgs:	jsr	setadr
+;
+	ldy	#'0'
+	ldx	area
+	inx
+	txa
+	sec
+	sbc	#10
+	bcc	armg00
+	tax
+	iny
+armg00:	txa
+	clc
+	adc	#'0'
+	sty	vramdt
+	sta	vramdt
+	rts
+;
+strtwi:
+	lda	#1
+	sta	muscmd
+strtwl:
+	lda	muscmd
+	and	#7
+	bne	strtwl	;	main4
+	rts
+;
+menclr:
+	lda	#0
+	sta	muscmd
+	sta	effcmd
+	lda	#75
+	sta	timer
+mncplp:
+	lda	timer
+	beq	menclo
+	jsr	sprini	;sprtbl init
+	jsr	mandsp
+	jsr	jindsp
+	jsr	curdsp
+	jsr	clkdsp
+	jsr	scrspr	;scroll timing
+	jsr	mainwi
+	jmp	mncplp
+;
+menclo:	lda	#0
+	sta	gamef
+	sta	muscmd
+	sta	total+0
+	sta	total+1
+;
+	jsr	scrnof
+	ldx	time
+	lda	#5
+	sta	aa
+	jsr	totlop
+	ldx	tiksuu
+	lda	#10
+	sta	aa
+	jsr	totlop
+	PTRSET	tilare,indexr
+	jsr	trncol
+;	jsr	stctbl
+	jsr	cls
+	jsr	clrscr
+	jsr	tkswrt
+	jsr	sprini
+;
+	ldx	#0
+	stx	scrole
+	stx	scrolh
+	stx	scesav
+	stx	totdpt
+	inx
+	stx	totwfl
+	jsr	totdsp
+	jsr	totwrt
+;
+	lda	#$70
+	sta	many
+	lda	#0
+	sta	manxl
+	sta	manxh
+	lda	#3
+	sta	mandir
+;
+	jsr	scrnon
+;
+mnclop:
+;
+	lda	muscmd
+	and	#7
+	bne	mncskp	;	beq	grdups
+;
+	lda	timer
+	and	#1
+	bne	mncskp
+	lda	total+0
+	ora	total+1
+	beq	grdups
+	jsr	totdec
+	lda	#8
+	sta	effcmd
+;
+mncskp:
+;
+	jsr	sprini
+;
+	lda	area
+	cmp	#$0f
+	bne	mncsk1
+	jsr	jincmp
+	jsr	manmov
+	jsr	mandsp
+	jsr	jindsp
+;
+mncsk1:	jsr	cltdsp
+	jsr	totdsp
+;
+	jsr	scores
+;
+	jsr	mainwi
+	jmp	mnclop
+;
+grdups:
+	lda	#255-120
+	sta	timer
+gruplp:
+	lda	area
+	cmp	#$0f
+	bne	*+5
+	jsr	hatcmp
+	jsr	cltdsp
+	jsr	mainwi
+	lda	timer
+	bne	gruplp
+;
+	lda	#0
+	sta	spbedg
+	sta	tekbeg
+	sta	tksedg
+	sta	point
+	sta	totwfl
+	inc	area
+	lda	area
+	and	#15
+	bne	grurt
+	sta	area
+	jsr	incgrd	;	inc	grade
+	lda	#0	;gread up only
+	sta	tksscn
+	ldx	nanido
+	inx
+	cpx	#4
+	bcs	grurt
+	stx	nanido
+grurt:	jmp	regame
+;
+incgrd:
+	ldx	#2
+	lda	#1
+	clc
+incglp:	adc	grade,x
+	sta	grade,x
+	sec
+	sbc	#10
+	bcc	incgsk
+	sta	grade,x	
+incgsk:	lda	#0
+	dex
+	bpl	incglp
+	lda	grade
+	beq	incgrt
+	lda	#1
+	sta	grade+0
+	lda	#0
+	sta	grade+1
+	sta	grade+2			
+incgrt:	rts
+;
+timpos:
+	dw	$2000+(32*12+8)
+	dw	$2000+(32*16+8)
+tikpos:
+	dw	$2000+(32*14+13)
+	dw	$2000+(32*18+13)
+totpos:
+	dw	$2000+(32*16+8)
+	dw	$2000+(32*20+8)
+;
+clrscr:
+	jsr	scmsst
+	jsr	scrpr1
+;
+	ldy	#0
+	lda	area
+	cmp	#15
+	bne	*+4
+	ldy	#2
+;
+	sty	savey
+	PTRSET	timmes,indexr
+	ldx	timpos+0,y
+	lda	timpos+1,y
+	ldy	#0
+	jsr	mespr2
+;
+	ldy	savey
+	PTRSET	tikmes,indexr	
+	ldx	tikpos+0,y
+	lda	tikpos+1,y
+	ldy	#0
+	jsr	mespr2
+;
+	ldy	savey
+	PTRSET	totmes,indexr
+	ldx	totpos+0,y
+	lda	totpos+1,y
+	ldy	#0
+	jsr	mespr2
+;
+	lda	area
+	cmp	#15
+	beq	grdupm
+;
+	lda	#5
+	sta	muscmd
+	PTRSET	clmes1,indexr
+	jsr	mesprt
+	PTRSET	clmes2,indexr
+	jsr	mesprt
+	PTRSET	clmes3,indexr
+	jsr	mesprt
+	jmp	clemgt
+;
+grdupm:
+	lda	#6
+	sta	muscmd
+;
+	PTRSET	cmmes1,indexr
+	jsr	mesprt
+	PTRSET	cmmes2,indexr
+	jsr	mesprt
+	PTRSET	cmmes3,indexr
+	jsr	mesprt
+	PTRSET	cmmes4,indexr
+	jsr	mesprt
+	PTRSET	cmmes5,indexr
+  	jsr	mesprt
+	lda	#high ($2000+(32*9+17))
+	ldx	#low ($2000+(32*9+17))
+	jsr	setadr
+	ldx	#0
+gredwr:	lda	grade,x
+	clc
+	adc	#$30
+	sta	vramdt
+	inx
+	cpx	#3
+	bcc	gredwr
+	rts
+;
+ovrpdt:	db	8,10,6,8,8,8,8,8
+	db	8,10,7,8,8,8,11,6
+;
+gamovr:
+	ldx	#0
+	stx	gamef
+	stx	scrolh
+	stx	scesav
+	stx	usemax
+ 	lda	demof
+	bne	overok
+	inx
+;	stx	spbedg
+	stx	tekbeg
+	lda	left
+	sec
+	sbc	#1
+	sta	left
+	bcc	overok
+	lda	#9
+	sta	mandmg
+	ldy	area
+	lda	scrole
+	cmp	ovrpdt,y
+	bcc	nonovr
+	lda	ovrpdt,y
+	sta	scesav
+nonovr:	jmp	regame
+overok:
+	lda	#0
+	sta	left
+	sta	muscmd
+	sta	effcmd
+;
+	jsr	scrnoff
+	lda	creg0m
+	ora	#$08
+	sta	creg0m
+	PTRSET	tilcol,indexr
+	jsr	trncol
+;	jsr	stctbl
+	jsr	cls
+	ldx	#$00
+	lda	#$24
+	jsr	setadr
+	lda	#SPCCOD
+	ldx	#$c0
+	ldy	#$4
+	jsr	filvs
+	jsr	tilmak
+	PTRSET	ovmes,indexr
+	jsr	mesprt
+	ldx	#0
+	stx	hscrl0
+	dex
+	stx	hscrl1
+	jsr	sprini
+	jsr	scrrst
+	jsr	scrnon
+;
+	lda	demof
+	bne	ovrend
+;
+	lda	#7
+	sta	muscmd	
+	ldy	#240
+ovrlop:
+	lda	joyone
+	and	#%0011_0000
+	bne	ovrend
+	lda	muscmd
+	and	#7
+	beq	ovrend
+;
+	tya
+	beq	ovrscr
+	dey
+	jmp	maina
+;
+ovrscr:	lda	hscrl1
+	beq	maina
+	inc	hscrl0
+	bne	maina
+	inc	hscrl1
+;
+maina:	jsr	mainwi
+	jmp	ovrlop
+;
+ovrend:	lda	#0
+	sta	hscrl0
+	sta	hscrl1
+	sta	demof
+	sta	pause
+;	sta	joyone
+	jmp	newgam
+
+;
+CLMES1:	dw	$2000+(32*6+8)	;	6,6,18
+	db	'YOU CLEAR AREA ??',0
+CLMES2:	dw	$2000+(32*8+9)	;8,8,16
+	db	'TRY NEXT AREA !!',0
+CLMES3:	dw	$2000+(32*18+12)	;11,11,9
+	db	'GOOD LUCK',0
+;
+CMMES1:	dw	$2000+(32*4+8)	;9,4,14
+	db	'CONGRATULATIONS',0
+CMMES2:	dw	$2000+(32*6+7)	;7,7,17
+	db	'YOU ARE QUALIFIED',0
+CMMES3:	dw	$2000+(32*7+7)	;7,8,17
+	db	'AS A NINJA OF THE',0
+CMMES4:	dw	$2000+(32*9+9)	;9,10,13
+	db	'< GRADE ??? >',0
+CMMES5:	dw	$2000+(32*22+5)	;5,13,22
+	db	'LET',$27,'S TRY NEXT GRADE !',0
+;
+OVMES:	dw	$2400+(32*12+11)	;11,16,9
+	db	'GAME OVER',0
+timmes:
+;	dw	$2000+(32*12+8)
+	db	'TIME * 50 =     0',0
+tikmes:
+;	dw	$2000+(32*14+13)
+	db	'*100 =    00',0
+totmes:
+;		 8901234567890123456
+;	dw	$2000+(32*16+8)
+	db	'TOTAL BONUS     0',0
+;================================================================
+;
+;
+;	pxl,pxh,py,pcol,pptr(zero ptr),poam
+put2x2:
+;	
+;hyoji x hosei
+	ALLPSH
+	jsr	putsb0
+;
+	ldx	#0
+	stx	ptlopc
+put2lp:
+	jsr	putsb1
+	bne	put2sk
+;
+	jsr	putsb2
+;
+put2sk:
+	inc	ptlopc
+	ldx	ptlopc
+	cpx	#4
+	bcc	put2lp
+;
+	ALLPLU
+	rts
+;
+;
+;	pxl,pxh,py,pcol,pptr(zero ptr),poam
+put2x3:
+;	
+;hyoji x hosei
+	ALLPSH
+	jsr	putsb0
+;
+	ldx	#0
+	stx	ptlopc
+put3lp:
+	jsr	putsb1
+	bne	put3sk
+;
+	jsr	putsb2
+;
+put3sk:
+	inc	ptlopc
+	ldx	ptlopc
+	cpx	#6
+	bcc	put3lp
+;
+	ALLPLU
+	rts
+;
+;
+;
+putsb0:	lda	pxl
+	sec
+	sbc	scrolh
+	sta	pxl
+	lda	pxh
+	sbc	scrole
+	sta	pxh
+	rts
+;
+putsb1:	lda	pcol
+	rol	a
+	rol	a
+	rol	a
+	rol	a
+	and	#$02
+	sta	popos
+	txa
+	and	#1
+	ora	popos
+	tay
+	lda	pxl
+	clc
+	adc	putofx+0,y	;manofx,x
+	sta	ptx
+	lda	pxh
+	adc	#0	;putofx+1,y	;#0
+	rts
+;
+putsb2:
+	lda	poam
+	clc
+	adc	oamof,x
+	asl	a
+	asl	a
+	sta	popos
+;	
+	lda	py
+	clc
+	adc	manofy,x
+	ldy	popos
+	inc	popos
+	jsr	sprput
+;
+	ldy	ptlopc
+	lda	[pptr],y
+	ldy	popos
+	inc	popos
+	jsr	sprput
+;
+	lda	pcol
+	ldy	popos
+	inc	popos
+	jsr	sprput
+;
+	lda	ptx
+	ldy	popos
+	jmp	sprput
+
+;
+oamof:	db	0,32,1,33,2,34
+;
+nnword:	db	$80,0
+manofy:	db	0,0,8,8,16,16
+manofx:	db	0,8
+;
+putofx:
+	db	0,8
+	db	8,0	;-8
+;
+;---------------------------------------------------------------------
+;
+paudsp:
+;
+	ldx	#4
+	ldy	#8
+;
+paudlp:
+	lda	#$50
+	sta	oambuf+0,y
+	lda	paumes,x
+	sta	oambuf+1,y
+	lda	#2
+	sta	oambuf+2,y
+	lda	paux,x
+	sta	oambuf+3,y
+	iny
+	iny
+	iny
+	iny
+	dex
+	bpl	paudlp
+	rts
+;
+paumes:	db	'PAUSE'
+paux:	db	$6c,$74,$7c,$84,$8c
+;
+;-----------------------------------------------------------------------
+;
+cltdsp:
+	ldx	#7
+cltdlp:	lda	cltpat,x
+	sta	oambuf+24,x
+	dex
+	bpl	cltdlp
+	jsr	tikfls
+	lda	area
+	cmp	#15
+	bne	cltdrt
+	lda	#18*8+$10
+	sta	oambuf+24
+	sta	oambuf+24+4
+cltdrt:	rts
+;
+cltpat:
+	db	14*8+$10,$bb,3,9*8
+	db	14*8+$10,$bc,3,10*8
+;
+;
+tkswrt:
+	PTRSET	tksbuf,p0
+	lda	tiksuu
+	jsr	num8bt
+;
+	PTRSET	timbuf,p0
+	lda	time
+	lsr	a
+	jsr	num8bt
+	ldy	#$30
+	lda	time
+	and	#1
+	beq	*+4
+	ldy	#$35
+	sty	timbuf+3	
+;
+	ldx	#low($2000+32*14+20)
+	lda	#high($2000+32*14+20)
+	ldy	area
+	cpy	#15
+	bne	*+6
+	ldx	#low($2000+32*18+20)
+	lda	#high($2000+32*18+20)
+	jsr	setadr
+	ldx	#0
+tskdlp:	lda	tksbuf,x
+	sta	vramdt
+	inx
+	cpx	#3
+	bcc	tskdlp
+;
+	ldx	#low($2000+32*12+20)
+	lda	#high($2000+32*12+20)
+	ldy	area
+	cpy	#15
+	bne	*+6
+	ldx	#low($2000+32*16+20)
+	lda	#high($2000+32*16+20)
+	jsr	setadr
+	ldx	#0
+timdlp:	lda	timbuf,x
+	sta	vramdt
+	inx
+	cpx	#4
+	bcc	timdlp
+;
+	rts
+;
+num8bt:
+	ldy	#0
+	ldx	#100
+	stx	aa
+	jsr	numsub
+	pha
+	txa
+	sta	[p0],y
+	iny
+	pla
+	ldx	#10
+	stx	aa
+	jsr	numsub
+	pha
+	txa
+	sta	[p0],y
+	iny
+	pla
+	clc
+	adc	#$30
+	sta	[p0],y
+;
+	ldy	#0
+nm8zlp:	lda	[p0],y
+	cmp	#'0'
+	bne	nm8zsk
+	lda	#SPCCOD	;CLRCOD
+	sta	[p0],y
+	iny
+	cpy	#3
+	bcc	nm8zlp
+nm8zsk:
+	rts
+;
+totlop:
+	txa
+	beq	totlrt	
+	lda	total+0
+	clc
+	adc	aa
+	sta	total+0
+	lda	total+1
+	adc	#0
+	sta	total+1
+	dex
+	bne	totlop
+totlrt	rts
+;
+totdsp:
+	lda	total+0
+	sta	indexr+0
+	lda	total+1
+	sta	indexr+1
+	PTRSET	totbuf,p0
+	jsr	num16b
+	ldx	#1
+totzlp:	lda	totbuf,x
+	cmp	#'0'
+	bne	totzsk
+	lda	#' '
+	sta	totbuf,x
+	inx
+	cpx	#4
+	bcc	totzlp	
+totzsk:	rts
+;
+totwdt:
+	dw	$2000+32*16+20
+	dw	$2000+32*20+20
+;
+totwrt:
+	lda	totwfl
+	beq	totzsk
+;
+	ldy	#0
+	lda	area
+	cmp	#15
+	bne	*+4
+	ldy	#2
+	ldx	totwdt+0,y
+	lda	totwdt+1,y
+	jsr	setadr
+;
+	ldx	#1
+tksdlp:	lda	totbuf,x
+	sta	vramdt
+	inx
+	cpx	#5
+	bcc	tksdlp
+	rts
+;
+totdec:
+	lda	total+0
+	sec	
+	sbc	#10
+	sta	total+0
+	lda	total+1
+	sbc	#0
+	sta	total+1
+	bcc	totdsk
+	lda	#13
+	jmp	scradd
+totdsk:
+	lda	#0
+	sta	total+0
+	sta	total+1
+	lda	#17
+	jmp	scradd
+;
+num16b:
+	ldx	#0
+	ldy	#0
+nm16bl:
+	jsr	num16s
+	lda	aa
+	sta	[p0],y
+	iny
+	cpy	#5
+	bcc	nm16bl
+	rts
+;
+num16s:	lda	#$2f
+	sta	aa
+nm16sl:	inc	aa
+	lda	indexr+0
+	sec
+	sbc	nm16tb+0,x
+	sta	indexr+0	
+	lda	indexr+1
+	sbc	nm16tb+1,x
+	sta	indexr+1
+	bcs	nm16sl
+	lda	indexr+0
+;	clc
+	adc	nm16tb+0,x
+	sta	indexr+0
+	lda	indexr+1
+	adc	nm16tb+1,x
+	sta	indexr+1
+	inx
+	inx	
+	rts
+;
+nm16tb:	dw	10000
+	dw	1000
+	dw	100
+	dw	10
+	dw	1
+;
+;
+;
+jincmp:
+	lda	#$68
+	sta	jiny
+	lda	#$98
+	sta	jinxl
+	lda	#$0
+	sta	jinxh
+	sta	jinflg
+	sta	jindir
+jincrt:	rts
+;
+hatcmp:
+	lda	#($60-4)
+	sta	pxl
+	lda	#0
+	sta	pxh
+	lda	many
+	sta	py
+	lda	#2
+	sta	poam
+	lda	#$40
+	sta	pcol
+	PTRSET	hatsnm,pptr
+	jmp	put2x3
+;
+hatsnm:
+	db	$c8,$c9,$7e,$7f,$d7,$fc
+;
+

@@ -1,0 +1,2529 @@
+;
+;
+;	<NINJA HATTORI KUN>
+;			enemy sub
+;
+tekini:
+	ldx	#TEKMAX-1
+	lda	#$ff
+tekilp:	sta	tekflg,x
+	dex
+	bpl	tekilp
+	lda	scrole
+	sta	oldsce
+	ldx	#0
+	stx	teknof
+	stx	catcnt
+	stx	blkcnt
+	stx	tekdth
+	dex
+	stx	nowtek
+	rts
+;
+tkgttb:
+	db	0,1,2,3,4,4,4,4,4,5,5,5,5,5,6,7
+;
+tkgtim:
+	JTBL	kmgtim	;kaminari
+	JTBL	krgtim	;karasu tengu
+	JTBL	obgtim	;obake
+	JTBL	rbgtim	;robo dori
+	JTBL	clgtim	;kumonori
+	JTBL	blgtim	;kuro ninja
+	JTBL	kegtim	;kemumaki
+	JTBL	hkgtim	;hakubyusai
+;
+rbgtim:	;robo dori
+obgtim:	;obake
+	ldy	nanido
+	lda	timer
+	and	rbgtdt,y	;#$3f
+	beq	oktgen
+	rts
+;
+rbgtdt:
+	db	$ff,$7f,$3f,$1f
+;
+kmgtim:	;kaminari
+	lda	timer
+	and	#$3f
+	bne	owari
+	lda	thnfir
+	cmp	#4
+	bcc	oktgen
+	rts
+krgtim:	;karasutengu
+	lda	krsfir
+	beq	oktgen
+	rts
+;
+hkgtim:	;hakbyousai
+	lda	hakfir
+	beq	oktgen
+	rts
+;
+clgtim:	;kumonori
+blgtim:	;kuro ninja
+	lda	kouwai
+	beq	blgt10
+	dec	kouwai
+	rts	
+blgt10:	lda	nxtblk
+	beq	blgt20
+	dec	nxtblk
+	rts
+blgt20:	ldy	nanido
+	lda	blcndt,y	;lda	#$10
+	sta	nxtblk
+	inc	tektim
+	rts
+;
+blcndt:
+	db	$40,$30,$20,$10
+;
+kegtim:	;kemumaki
+	lda	tekfir
+	bne	owari
+	lda	teknof
+	bne	owari
+oktgen:	inc	tektim
+owari:
+tekgr1:	rts
+;
+tekgen:
+	lda	oldsce
+	cmp	scrole
+	beq	tekg10
+	lda	scrole
+	sta	oldsce
+	lda	area
+	asl	a
+	asl	a
+	asl	a
+	asl	a
+	clc
+	adc	scrole	;manxh	;scrole
+	tay
+	lda	emytbl,y
+	sta	nowtek
+	tay
+	lda	tkgttb,y
+	sta	tekgrp
+	lda	#0
+	sta	tekfir
+	sta	kouwai
+	sta	nxtblk
+	sta	blkcnt
+	sta	thnfir
+	sta	krsfir
+	sta	hakfir
+	lda	nowtek
+	cmp	#15
+	bne	tekg09
+	lda	#4
+	sta	muscmd
+	bne	tekg10	;<bra>
+tekg09:
+	lda	muscmd
+	and	#$0f
+	cmp	#4
+	bne	tekg10
+	lda	#2
+	sta	muscmd
+;
+tekg10:	lda	teknof	;hakbyu karaten
+	bne	tekgr1
+	ldy	nowtek	;	lda	nowtek
+	iny		;	cmp	#$ff
+	beq	tekgr1
+;
+	lda	#0
+	sta	tektim
+	lda	tekgrp
+	asl	a
+	tay
+	INDCAL	tkgtim,y
+	lda	tektim
+	beq	tekgrt
+;
+	lda	kanflg
+	bne	tekgrt
+	lda	shnflg
+	cmp	#$80
+	beq	tekgrt
+	ldx	#TEKMAX-1
+tekglp:
+	ldy	tekflg,x	;	lda	tekflg,x
+	iny			;	cmp	#$ff
+	beq	tekgok
+	dex
+	bpl	tekglp
+tekgrt:	rts
+;
+tekgok:
+	lda	#0
+	sta	tekxcn,x
+	sta	tekycn,x
+	sta	teksta,x
+	sta	tekstp,x	
+	sta	tekjpt,x
+	lda	nowtek
+	cmp	#$ff
+	beq	tekgrt	
+	sta	tekflg,x
+	asl	a
+	tay
+	INDJMP	tekgtb,y
+;
+tekgtb:
+	JTBL	thngen	;kaminari tsukai	;0
+	JTBL	kargen	;karasu tengu
+	JTBL	obkgen	;obake 
+	JTBL	robgen	;robo dori
+	JTBL	km0gen	;kumonori type 0	;4
+	JTBL	km1gen	;///////////// 1
+	JTBL	km2gen	;///////////// 2
+	JTBL	km3gen	;///////////// 3
+	JTBL	km4gen	;///////////// 4
+	JTBL	bl0gen	;kuro ninja type 0	;9
+	JTBL	bl1gen	;/////////////// 1
+	JTBL	bl1gen	;bl2gen	;/////////////// 2
+	JTBL	bl3gen	;/////////////// 3
+	JTBL	bl4gen	;/////////////// 4
+	JTBL	kemgen	;kemumaki		;14
+	JTBL	hakgen	;hakubyusai
+;
+thngen:
+	lda	#$01
+	sta	tekdir,x
+	jsr	tekxst
+	lda	#$50
+	sta	teky,x
+	inc	thnfir
+	rts
+;
+kargen:	lda	#%0000_1101
+	sta	tekdir,x
+	jsr	tekxst
+	lda	#$50
+	sta	teky,x
+	lda	#1
+	sta	teknof
+	inc	krsfir
+	rts
+;
+obkgen:
+	lda	#1
+	sta	tekdir,x
+	lda	#$50
+	sta	teky,x
+	jsr	tekxst
+lodhat:	;load hattori position and direction set
+	lda	tekdir,x
+	and	#$f5
+	sta	tekdir,x
+;
+	lda	manxl
+	sta	oldhxl,x
+	lda	manxh
+	sta	oldhxh,x
+	lda	manxl
+	cmp	tekxl,x
+	bcc	lodh10
+	lda	tekdir,x
+	ora	#$02
+	sta	tekdir,x
+lodh10:	
+	lda	many
+	sta	oldhy,x
+	cmp	teky,x
+	bcc	lodhrt
+	lda	tekdir,x
+	ora	#$08
+	sta	tekdir,x
+lodhrt:	rts
+;
+robgen:	;robo dori 
+	lda	#%0000_1101	;$09
+	sta	tekdir,x
+	lda	#$40
+	sta	teky,x
+	jmp	tekxst
+;
+km0gen:	;kumonori type 0
+	jsr	blcup	
+	lda	#$01
+	sta	tekdir,x
+	lda	#$80
+	sta	teky,x
+	jmp	tekxst
+;
+km1gen:
+	jsr	blcup	
+	lda	#$01
+	sta	tekdir,x
+	lda	#$50
+	sta	teky,x
+	jmp	tekxst
+;
+km2gen:
+	jsr	blcup	
+	lda	#$01
+	sta	tekdir,x
+	lda	score+6
+	asl	a
+	asl	a
+	clc
+	adc	#$50
+	sta	teky,x
+	jmp	tekxst
+;
+km3gen:	
+	jsr	blcup	
+	lda	#%0000_1101	
+	sta	tekdir,x
+	lda	#$50
+	sta	teky,x
+	jmp	tekxst
+;
+km4gen:	;kumonori type 4
+;	jsr	blcup	
+	lda	#$03
+	sta	tekdir,x
+	lda	#$80
+	sta	teky,x
+	lda	scrolh
+	sta	tekxl,x
+	lda	scrole
+	sta	tekxh,x
+	jmp	blcup
+;	rts
+;
+bl0gen:
+bl1gen:
+bl3gen:
+	jsr	blcup
+	inc	catcnt
+	lda	catcnt
+	cmp	#12
+	bcc	blsok
+;
+	lda	#0
+	sta	catcnt
+	ldy	catokf
+	bne	blsok
+	sta	catatc
+	lda	#17
+	sta	tekflg,x
+;
+blsok:	lda	#$01
+	sta	tekdir,x
+	lda	#$b0
+	sta	teky,x
+	jmp	tekxst
+;
+;
+kemgen:
+	lda	#%0000_1101
+	sta	tekdir,x
+	lda	#$40
+	sta	teky,x
+	lda	#1
+	sta	teknof
+	inc	tekfir
+	jmp	tekxst
+;
+;
+hakgen:
+	lda	#%0000_0000
+	sta	tekdir,x
+	sta	hakatc	; hakatc <= 0
+	lda	scrole
+	sta	tekxh,x
+	lda	scrolh
+	clc
+	adc	#$e0	
+	sta	tekxl,x
+	lda	#$b0
+	sta	teky,x
+	lda	#1
+	sta	teknof
+	inc	hakfir
+	rts
+;
+tekxst:
+	lda	scrolh
+	clc
+	adc	#$ff
+	sta	tekxl,x
+	lda	scrole
+	adc	#0
+	sta	tekxh,x
+bl4gen:	rts
+;
+blcup:
+	inc	blkcnt
+	lda	blkcnt
+	cmp	#10
+	bcc	blcurt
+	lda	#240
+	sta	kouwai
+	lda	#0
+	sta	blkcnt
+blcurt:	rts
+;
+tekmov:
+	jsr	tekgen
+	ldx	#TEKMAX-1
+tekmlp:	stx	cc
+	lda	tekflg,x
+	cmp	#$ff
+	beq	tekmsk
+	cmp	#16
+	beq	tekm10
+	ldy	kanflg	;kanashibari
+	bne	tekmcl
+tekm10:	asl	a
+	tay
+	INDCAL	tekmtb,y
+;
+tekmcl:	jsr	tektam
+	jsr	tekdog
+	jsr	mantek
+;
+	ldx	cc
+	lda	tekxl,x
+	sta	clipl
+	lda	tekxh,x
+	sta	cliph
+	jsr	clip
+	bcc	tekmsk
+	ldy	tekflg,x
+	lda	#$ff
+	sta	tekflg,x
+;
+	cpy	#1
+	beq	tekmtn
+	cpy	#14
+	beq	tekmtn
+	cpy	#15
+	bne	tekmsk
+tekmtn:	lda	#$0
+	sta	teknof
+tekmsk:	ldx	cc
+	dex
+	bpl	tekmlp
+	rts
+;
+tekmtb:
+	JTBL	thnmov	;kaminari kozou
+	JTBL	karmov	;karasu tengu
+	JTBL	obkmov	;obake
+	JTBL	robmov	;robo dori
+	JTBL	km0mov	;kumonori type 0
+	JTBL	km1mov	;///////////// 1
+	JTBL	km2mov	;///////////// 2
+	JTBL	km3mov	;///////////// 3
+	JTBL	km4mov	;///////////// 4
+	JTBL	bl0mov	;kuro ninja type 0
+	JTBL	bl1mov	;/////////////// 1	
+	JTBL	bl1mov	;bl2mov	;/////////////// 2
+	JTBL	bl3mov	;/////////////// 3
+	JTBL	bl4mov	;/////////////// 4
+	JTBL	kemmov	;kemumaki
+	JTBL	hakmov	;hakubyusai
+	JTBL	tekyra	;yarare	16
+	JTBL	catmov	;kagechiyo	17
+;
+tekyra:	;yarare
+	dec	teksta,x
+	bne	tekyrt
+	lda	#$ff
+	sta	tekflg,x
+tekyrt:	rts
+;
+catmov:
+	lda	#1
+	sta	dltdat
+	jsr	tekhmv
+;
+	ldy	tekflg,x
+	iny
+	bne	catm02
+	tya
+	sta	catokf
+;
+catm02:	inc	tekstp,x
+	lda	tekdir,x
+	and	#%0001_0000
+	bne	catm10
+	lda	tekxl,x
+	sec
+	sbc	manxl
+	tay
+	lda	tekxh,x
+	sbc	manxh
+	cpy	#$40
+	sbc	#0
+	bcs	catm10
+	lda	tekdir,x
+	ora	#%0011_0000
+	sta	tekdir,x
+	lda	#0
+	sta	tekjpt,x
+catm10:
+	jsr	tekjmp
+karmrt:
+	rts
+;
+thnmov:	;kaminari
+	lda	#0
+	jsr	arexmv
+	inc	teksta,x
+	lda	teksta,x
+	and	#$0f
+	bne	thnmrt
+	lda	#1
+	jsr	misgen
+thnmrt:	rts
+;
+karmov:	;karasu
+	lda	#1
+	jsr	arexmv
+	ldy	tekflg,x	;	lda	tekflg,x
+	iny			;	cmp	#$ff
+	bne	karm10
+	lda	#0
+	sta	teknof
+	rts
+karm10:	inc	tekstp,x
+	lda	tekstp,x
+	and	#$0f
+	bne	karm12
+	lda	#0
+	jsr	misgen
+karm12:	lda	tekycn,x
+	beq	karm11
+	dec	tekycn,x
+	rts
+karm11:	jsr	rnd
+	and	#1
+	sta	tekycn,x
+;
+	lda	#0
+	jmp	areymv
+;	jsr	areymv
+;	rts
+;
+;
+obkmov:	;obake
+;xmov
+	lda	tekxcn,x
+	beq	obkm01
+	dec	tekxcn,x
+	jmp	obkm10	
+obkm01:	lda	#1
+	sta	tekxcn,x
+	lda	tekxh,x
+	cmp	manxh
+	bne	obkm02
+	lda	oldhxl,x
+	cmp	tekxl,x
+	beq	obkm10
+obkm02:	lda	#0
+	jsr	arexmv
+obkm10:	;ymov
+	lda	tekycn,x
+	beq	obkm11
+	dec	tekycn,x
+	jmp	obkm20
+obkm11:	lda	#1
+	sta	tekycn,x
+	lda	tekxh,x
+	cmp	manxh
+	bne	obkm12
+	lda	oldhy,x
+	cmp	teky,x
+	beq	obkm20
+obkm12:	lda	#0
+	jsr	areymv
+obkm20:	
+	lda	oldhxl,x
+	cmp	tekxl,x
+	bne	obkmrt
+	lda	oldhy,x
+	cmp	teky,x
+	bne	obkmrt	
+	jmp	lodhat
+obkmrt:
+	rts	
+;
+robmov:	;robo dori
+	lda	#0
+	jsr	arexmv
+	lda	dirchg
+	beq	robm03
+	lda	tekdir,x
+	and	#%1111_0011
+	sta	tekdir,x
+	lda	#0
+	sta	teksta,x
+	jmp	robm10
+robm03:	inc	teksta,x
+	lda	tekdir,x
+	and	#%1111_1011
+	sta	tekdir,x
+	lda	teksta,x
+	sec
+	sbc	#$40
+	cmp	#$80
+	bcs	robm10
+	lda	tekdir,x
+	ora	#%0000_0100
+	sta	tekdir,x
+robm10:	;ymov
+	lda	teksta,x
+	and	#$0f
+	bne	robm11
+	lda	tekdir,x
+	eor	#%0000_1000
+	sta	tekdir,x
+	and	#%0000_1000
+	beq	robm11
+	lda	teksta,x
+	sbc	#$40
+	cmp	#$80
+	bcs	robm11
+	lda	#3	;3
+	jsr	misgen
+robm11:	lda	tekdir,x
+	and	#%0000_0100
+	beq	robmrt
+	lda	#1
+	jmp	areymv
+;	rts	
+;
+km4mov:
+km0mov:	;kumonori type 0
+	lda	#1
+	sta	dltdat
+	jsr	tekhmv
+	inc	tekstp,x
+	lda	tekstp,x
+	cmp	#(96 / 2)
+	bcc	km0m10
+	and	#$0f
+	bne	km0m10
+	lda	teksta,x
+	bne	km0m01
+	lda	#0
+	jsr	misgen
+km0m01:	inc	teksta,x
+	lda	teksta,x
+	cmp	#4
+	bcc	km0m10
+	lda	#4
+	sta	teksta,x
+km0m10:
+	lda	teksta,x
+	tay
+	lda	km0ymd,y
+	cmp	#$ff
+	beq	km0mrt
+	sta	dltdat
+	jsr	tekvmv
+	lda	teky,x
+	cmp	#$8
+	bcs	km0mrt
+km0med:	lda	#$ff
+	sta	tekflg,x
+km1mrt:
+robmrt:
+km0mrt:	rts	
+;
+km0ymd:	db	$ff,0,1,2,3
+;
+km1mov:
+	lda	#0
+	sta	dltdat
+	jsr	tekhmv
+	lda	tekdir,x
+	and	#$1111_0011
+	sta	tekdir,x
+	inc	teksta,x
+	lda	teksta,x
+	sec
+	sbc	#$58
+	cmp	#$50
+	bcs	km1m10	;rt
+	lda	tekdir,x
+	ora	#%0000_1100
+	sta	tekdir,x
+	lda	#0
+	sta	dltdat
+	jsr	tekvmv
+km1m10:	lda	teksta,x
+	cmp	#128
+	bne	km1mrt
+	lda	#0
+	jmp	misgen
+;
+km2mov:
+	ldy	#0
+	lda	teksta,x
+	bpl	km2m01
+	ldy	#2
+km2m01:	tya
+	sta	dltdat
+	jsr	tekhmv
+	lda	teksta,x
+	bmi	km2mrt
+	inc	teksta,x
+	lda	teksta,x
+	and	#$7f
+	bne	km2mrt
+	lda	tekdir,x
+	ora	#%0000_0010
+	sta	tekdir,x
+	lda	#0
+	jmp	misgen
+km2mrt:	rts
+;
+km3mov:
+	lda	#0
+	sta	dltdat
+	jsr	tekhmv
+	inc	teksta,x
+	lda	teksta,x
+	and	#$1f
+	bne	km3m10
+	lda	tekdir,x
+	eor	#%0000_1000
+	sta	tekdir,x
+km3m10:
+	lda	#0
+	sta	dltdat
+	jsr	tekvmv
+	lda	teksta,x
+	cmp	#128
+	bne	km3mrt
+	lda	#0
+	jmp	misgen
+;
+bl0mov:	
+	lda	#0	;1
+	sta	dltdat
+	jmp	tekhmv
+;
+bl1mov:
+	lda	#0	;1
+	sta	dltdat
+	jsr	tekhmv
+	inc	tekstp,x
+	lda	tekdir,x
+	and	#%0001_0000
+	bne	bl1m10
+	lda	tekxl,x
+	sec
+	sbc	manxl
+	tay
+	lda	tekxh,x
+	sbc	manxh
+	cpy	#$40
+	sbc	#0
+	bcs	bl1m10
+	lda	tekdir,x
+	ora	#%0011_0000
+	sta	tekdir,x
+	lda	#0
+	sta	tekjpt,x
+bl1m10:
+	jmp	tekjmp
+;	rts
+;
+bl3mov:
+	ldy	#0	;1
+	lda	teksta,x
+	beq	bl3m01
+	ldy	#2
+bl3m01:	sty	dltdat
+	jsr	tekhmv
+	lda	teksta,x
+	bne	bl3mrt
+	lda	tekxl,x
+	sec
+	sbc	scrolh
+	tay
+	lda	tekxh,x
+	sbc	scrole
+	cpy	#160
+	sbc	#0
+	bcs	bl3mrt
+	lda	#$03
+	sta	tekdir,x
+	inc 	teksta,x
+km3mrt:
+bl4mov:
+bl3mrt:	rts	
+;
+kemmov:
+	ldy	#0
+	lda	teksta,x
+	beq	kemm00
+	ldy	#2
+kemm00:	sty	dltdat
+	jsr	tekhmv
+	ldy	tekflg,x	;	lda	tekflg,x
+	iny			;	cmp	#$ff
+	bne	kemm02
+	lda	#0
+	sta	teknof
+	rts
+kemm02:	inc	tekstp,x
+	lda	tekstp,x
+	and	#$3f
+	bne	kemm01
+	lda	tekdir,x
+	ora	#%0000_1000	;y vec change
+	sta	tekdir,x
+kemm01:	lda	teksta,x
+	bne	kemm10
+	lda	tekxl,x
+	sec
+	sbc	scrolh
+	tay
+	lda	tekxh,x
+	sbc	scrole
+	cpy	#$20
+	sbc	#0
+	bcs	kemm10
+	lda	tekdir,x
+	eor	#%0000_0010	;x vec chenge
+	sta	tekdir,x
+	inc	teksta,x	
+kemm10:
+	lda	tekdir,x
+	and	#%0100_0000
+	bne	kemm12
+	lda	teksta,x
+	beq	kemm12
+	lda	timer	
+	and	#$f
+	bne	kemm12
+	lda	#4
+	jsr	misgen	
+;
+kemm12:	lda	tekycn,x
+	beq	kemm11
+	dec	tekycn,x
+	rts
+kemm11:	lda	#8
+	sta	tekycn,x
+	lda	#0
+	sta	dltdat
+	jmp	tekvmv
+;
+hakmov:
+	lda	teksta,x
+	bne	hakm10
+	inc	tekstp,x
+	lda	tekstp,x
+	cmp	#20
+	bcc	hakmrt
+	lda	#255-120
+	sta	tekstp,x
+	inc	teksta,x	
+hakmrt:	rts
+hakm10:
+	lda	#0
+	sta	dltdat
+	jsr	tekhmv
+;
+	ldy	tekflg,x	;	lda	tekflg,x
+	iny			;	cmp	#$ff
+	beq	hakm20
+	lda	tekdir,x
+	ora	#%0011_0000
+	sta	tekdir,x
+	lda	teksta,x
+	cmp	#2
+	beq	hakm13	
+	jsr	tekjp2
+	jmp	hakm14	
+hakm13:	jsr	tekjp1
+	lda	tekjpt,x
+	cmp	#32
+	bne	hakm14
+	lda	#2
+	jsr	misgen
+hakm14:	lda	tekjpt,x
+	bne	hakm11
+	lda	tekdir,x
+	eor	#%0000_0010
+	sta	tekdir,x
+hakm11:	inc	tekstp,x
+	bne	hakmrt
+	lda	teksta,x
+	cmp	#1
+	bne	hakmrt
+	inc	teksta,x
+	lda	teky,x
+	sec
+	sbc	#16
+	sta	teky,x
+	rts
+hakm20:
+	lda	#0
+	sta	teknof
+	rts
+;
+tekjmp:
+	lda	tekdir,x
+	and	#%0010_0000
+	beq	tekjrt
+	lda	tekjpt,x
+	tay
+	lda	teky,x
+	clc
+	adc	kujtbl,y
+	sta	teky,x
+	iny
+	tya
+	and	#$1f
+	sta	tekjpt,x
+	bne	tekjrt
+	lda	tekdir,x
+	and	#%1101_1111
+	sta	tekdir,x
+tekjrt:	rts
+;
+;
+kujtbl:
+	db	-8,-8,-4,-4,-4,-3,-3
+	db	-2,-2,-2,-1,-1,-1,-1,0,0
+	db	0,0,1,1,1,1,2,2,2,3,3,4,4,4,8,8
+;
+tekjp1:
+	lda	tekdir,x
+	and	#%0010_0000
+	beq	tekjrt
+	lda	tekjpt,x
+	tay
+	lda	teky,x
+	clc
+	adc	kujtb1,y
+	sta	teky,x
+	iny
+	tya
+	and	#$3f
+	sta	tekjpt,x
+	bne	tekj1r
+	lda	tekdir,x
+	and	#%1101_1111
+	sta	tekdir,x
+tekj1r:	rts
+;
+kujtb1:
+	db	-8,-8,-8,-8,-4,-4,-4,-4,-4,-4,-3,-3,-3,-3
+	db	-2,-2,-2,-2,-2,-2,-1,-1,-1,-1,-1,-1,-1,-1,0,0,0,0
+	db	0,0,0,0,1,1,1,1,1,1,1,1,2,2,2,2,2,2
+	db	3,3,3,3,4,4,4,4,4,4,8,8,8,8
+;
+tekjp2:
+	lda	tekdir,x
+	and	#%0010_0000
+	beq	tekj2r
+	lda	tekjpt,x
+	tay
+	lda	teky,x
+	clc
+	adc	kujtb2,y
+	sta	teky,x
+	iny
+	tya
+	and	#$f
+	sta	tekjpt,x
+	bne	tekj2r
+	lda	tekdir,x
+	and	#%1101_1111
+	sta	tekdir,x
+tekj2r:	rts
+;
+kujtb2:
+	db	-8,-4,-3
+	db	-2,-2,-1,-1,0
+	db	0,1,1,2,2,3,4,8
+arexmv:
+	sta	dltdat
+	lda	#0
+	sta	dirchg
+	lda	tekxl,x
+	sta	xlsave
+	lda	tekxh,x
+	sta	xhsave
+	jsr	tekhmv
+	lda	xhsave
+	cmp	tekxh,x
+	beq	arexrt
+	sta	tekxh,x
+	lda	xlsave
+	sta	tekxl,x
+	lda	tekdir,x
+	eor	#$02
+	sta	tekdir,x
+	inc	dirchg
+arexrt:	rts
+;
+areymv:
+	sta	dltdat
+	lda	#0
+	sta	dirchg
+	lda	teky,x
+	sta	ysave
+	jsr	tekvmv
+	lda	teky,x
+	sec
+	sbc	#$30
+	cmp	#$b0-$30
+	bcc	areyrt
+	lda	ysave
+	sta	teky,x
+	lda	tekdir,x
+	eor	#$08
+	sta	tekdir,x
+	inc	dirchg
+areyrt:	rts
+;
+tekhmv:
+	lda	dltdat
+	asl	a
+	asl	a
+	sta	dltdat
+	lda	tekdir,x
+	and	#$02
+	clc
+	adc	dltdat
+	tay
+	lda	tekxl,x
+	clc
+	adc	hmvdlt+0,y
+	sta	tekxl,x
+	lda	tekxh,x
+	adc	hmvdlt+1,y
+	sta	tekxh,x
+	sta	cliph
+	lda	tekxl,x
+	sta	clipl
+	jsr	clip
+	bcc	tekhmr
+	lda	#$ff
+	sta	tekflg,x
+tekhmr:	rts
+;
+hmvdlt:
+	dw	$ffff
+	dw	$0001
+	dw	$fffe
+	dw	$0002
+	dw	$fffc
+	dw	$0004
+	dw	$fff8
+	dw	$0008
+;
+;
+tekvmv:
+	lda	dltdat
+	asl	a
+	asl	a
+	sta	dltdat
+	lda	tekdir,x
+	and	#8
+	lsr	a
+	lsr	a
+	clc
+	adc	dltdat
+	tay
+	lda	teky,x
+	clc
+	adc	hmvdlt+0,y
+	sta	teky,x
+	rts
+;
+clip:
+	stx	savex
+	sty	savey
+	lda	clipl
+	clc
+	adc	#16+$20
+	tax
+	lda	cliph
+	adc	#0
+	tay
+	txa
+	sec
+	sbc	scrolh
+	tax
+	tya
+	sbc	scrole
+	cpx	#low ($200 + 16 + $20)
+	sbc	#high ($200 + 16 + $20)
+	ldx	savex
+	ldy	savey
+mntkr2:	rts
+;
+;
+mantek:
+	lda	mandir
+	and	#$80
+	bne	mntkr2
+	ldy	tekflg,x	;	lda	tekflg,x
+	iny			;	cmp	#$ff	;	and	#$10
+	beq	mntkr2	;	bne	mntkrt
+	cpy	#17		;	cmp	#16
+	beq	mntkr2	
+	lda	kirflg
+	bne	mntkr2
+	lda	scrdbl
+	bne	mntkr2
+;
+	lda	many	
+	clc
+	adc	#23-8
+	sec
+	sbc	teky,x
+	cmp	#(16-8)+(23-8)
+;	bcc	*+5
+;	jmp	mntksk
+	bcs	mntksk
+;
+	lda	manxl
+	clc
+	adc	#7
+	tay
+	lda	manxh
+	adc	#0
+	sta	aa
+	tya
+	sec
+	sbc	tekxl,x
+	tay
+	lda	aa
+	sbc	tekxh,x
+	cpy	#16+7
+	sbc	#0
+	bcs	mntksk
+	
+;
+	lda	tekflg,x
+	cmp	#15
+	beq	mntk05
+	cmp	#1
+	bne	mntk01
+mntk05:	jmp	manout
+;
+;
+mntksk:	lda	tekdir,x
+	and	#%0111_1111
+	sta	tekdir,x
+mntkrt:	rts
+;
+mntk01:	lda	tekdir,x
+	bit	bit7st
+	bne	mntkrt
+	ldy	tekflg,x
+	cpy	#17
+	bne	mntk04
+	ora	#%1000_0000	;one touch
+	sta	tekdir,x
+;
+mntk04:	lda	tekbfl
+	beq	mntk02
+	lda	tekflg,x
+	sec
+	sbc	#4
+	cmp	#10
+	bcc	bntk30
+;
+mntk02:	lda	#$0a
+	jsr	effset
+;
+	lda	tekflg,x
+	cmp	#17
+	beq	mntk20
+	lda	#40	;20
+	sta	lasyfl
+	lda	mandir
+	ora	#$80
+	sta	mandir
+	dec	mandmg
+	bpl	mntkrt
+	lda	#0
+	sta	mandmg
+	jmp	manout
+;
+mntk20:
+	jmp	ninres
+;
+bntk30:	;deka kudamono
+	lda	#$ff
+	sta	tekflg,x
+	ldy	tekbeg
+	lda	tkbscr,y
+	jsr	scradd
+	lda	#1
+	jmp	effset	
+;
+tkbscr:
+	db	0,6,7,8
+;
+tektam:
+	ldy	tekflg,x	;	lda	tekflg,x
+	iny			;	cmp	#$ff
+	beq	tktmrt
+	cpy	#17		;	cmp	#16
+	beq	tktmrt
+	ldy	#TAMMAX-1
+;
+tktmlp:
+	lda	tamafl,y
+	cmp	#$ff
+	beq	tktmsk
+;
+	lda	tamay,y
+	clc
+	adc	#7
+	sec
+	sbc	teky,x
+	cmp	#16+7
+	bcs	tktmsk
+;
+	lda	tamaxl,y
+	clc
+	adc	#7
+	sta	aa
+	lda	tamaxh,y
+	adc	#0
+	sta	bb
+	lda	aa
+	sec
+	sbc	tekxl,x
+	sta	aa
+	lda	bb
+	sbc	tekxh,x
+	sta	bb
+	lda	aa
+	cmp	#16+7
+	lda	bb
+	sbc	#0
+	bcc	tekyok	;bcs	ktaskp
+;
+tktmsk:
+	dey
+	bpl	tktmlp
+tktmrt:	rts	
+;++++
+tekyok:
+	lda	#$ff
+	sta	tamafl,y
+tkdgo1:	lda	tekflg,x
+	cmp	#$e
+	bcc	tkyok1
+	cmp	#$f
+	beq	tkyok0
+	cmp	#17
+	beq	tkyok2
+;kemumaki
+	lda	tekdir,x
+	ora	#%0100_01000
+	sta	tekdir,x
+tkyo2r:
+okunos:	rts
+;
+tkyok2:	;kagechiyo
+	lda	tekdir,x
+	eor	#%0000_0010
+	sta	tekdir,x
+	inc	catatc
+	lda	catatc
+	and	#$f
+	bne	tkyo2r
+	sta	catatc
+	jmp	extinc	
+;
+tkyok0:	;haku
+	lda	teksta,x
+	cmp	#1
+	bne	okunos
+	inc	hakatc
+	lda	hakatc
+	and	#7
+	bne	tktktk
+	lda	#0
+	sta	teknof
+;
+tkyok1:	jsr	tkdthi
+	ldy	tekflg,x
+	lda	tekscr,y
+	jsr	scradd
+	lda	tekflg,x
+	cmp	#2	;obake wa tama suitori
+	beq	tkyort
+	cmp	#1
+	bne	tkyokx
+	lda	#0	;karasutengu
+	sta	teknof
+tkyokx:	lda	#16
+	sta	tekflg,x
+	lda	#30	;60
+	sta	teksta,x
+tktktk:	lda	#4
+	jmp	effset
+tkyort:	rts
+;
+tkdthi:
+	lda	tekflg,x
+	sec
+	sbc	#9
+	cmp	#5
+	bcs	tkdtrt
+	inc	tekdth
+	lda	tekdth
+	cmp	#11
+	bcc	tkdtrt
+	lda	#10
+	sta	tekdth
+tkdgrt:
+tkdtrt:	rts
+;tama
+tekscr:
+	db	1,2,0,1,11,11,11,11,11
+	db	4,4,4,4,4,0,3,0,0
+;
+;
+tekdog:
+	lda	dogflg
+	cmp	#2
+	bne	tkdgrt
+;
+	ldy	tekflg,x
+	iny
+	beq	tkdgrt
+	cpy	#16+1
+	beq	tkdgrt
+;
+	lda	dogy
+	clc
+	adc	#15
+	sec
+	sbc	teky,x
+	cmp	#16+15
+	bcs	tkdgrt
+;
+	lda	dogxl
+	clc
+	adc	#15
+	tay
+	lda	dogxh
+	adc	#0
+	sta	aa
+	tya
+	sec
+	sbc	tekxl,x
+	tay
+	lda	aa
+	sbc	tekxh,x
+	cpy	#16+15
+	sbc	#0
+	bcs	tkdgrt	;	bcc	tkdgok
+;
+tkdgok:
+	lda	tekflg,x
+	cmp	#$e
+	bcc	tkdg20
+	bne	tkdg10
+;kemu
+	lda	tekdir,x
+	ora	#%0100_1000
+	sta	tekdir,x
+	jmp	tkdgsk
+tkdg10:	;haku
+	cmp	#17
+	beq	tkdg15
+tkdgsk:	rts
+;	lda	teksta,x
+;	cmp	#$2
+;	beq	tkdgsk
+;	tay
+;	bne	tkdg20
+;	lda	#$ff
+;	sta	tekflg,x
+;	bne	tkdgsk	;<bra>
+;
+tkdg15:
+	lda	tekdir,x
+	eor	#%0000_0010
+	sta	tekdir,x
+	rts	
+;
+tkdg20:	
+	ldy	tekflg,x
+	lda	tekscr,y
+	jsr	scradd
+	lda	tekflg,x
+	cmp	#1
+	beq	tkdgjj
+	cmp	#15
+	bne	tkdgkk
+tkdgjj:
+	lda	#0
+	sta	teknof
+tkdgkk:	lda	#16
+	sta	tekflg,x
+	lda	#30
+	sta	teksta,x
+	lda	#1
+	jmp	effset
+;
+;
+tekdsp:
+	lda	#5
+	sta	tekoam
+	ldx	#TEKMAX-1
+tekdlp:	stx	cc
+	lda	tekflg,x
+	cmp	#$ff
+	beq	tekdsk
+	asl	a
+	tay
+	INDCAL	tekdtb,y
+tekdsk:	ldx	cc
+	dex
+	bpl	tekdlp
+bl4dsp:
+	rts
+;
+tekdtb:
+	JTBL	thndsp	;kaminari kozou
+	JTBL	kardsp	;karasu tengu
+	JTBL	obkdsp	;obake
+	JTBL	robdsp	;robo dori
+	JTBL	km0dsp	;kumonori type 0
+	JTBL	km1dsp	;///////////// 1
+	JTBL	km2dsp	;///////////// 2
+	JTBL	km3dsp	;///////////// 3
+	JTBL	km4dsp	;///////////// 4
+	JTBL	bl0dsp	;kuro ninja type 0
+	JTBL	bl1dsp	;/////////////// 1	
+	JTBL	bl1dsp	;bl2dsp	;/////////////// 2
+	JTBL	bl3dsp	;/////////////// 3
+	JTBL	bl4dsp	;/////////////// 4
+	JTBL	kemdsp	;kemumaki
+	JTBL	hakdsp	;hakubyusai
+	JTBL	tekyds	;yarare
+	JTBL	catdsp	;kagechiyo
+;
+tekyds:
+	lda	tekxl,x
+	sta	pxl
+	lda	tekxh,x
+	sta	pxh
+	lda	teky,x
+	sta	py
+;
+	lda	timer
+	and	#$4
+	clc
+	adc	#low kemuri
+	sta	pptr+0
+	lda	#0
+	adc	#high kemuri
+	sta	pptr+1
+;
+	lda	#2
+	sta	pcol
+	jsr	toams2
+	jmp	put2x2	
+
+thndsp:
+	lda	#0*8
+	sta	aa
+	inc	tekflp,x
+	lda	tekflp,x
+	and	#8
+	lsr	a
+	sta	bb
+	jmp	tekdrw	
+
+;
+kardsp:
+	PTRSET	karpat,pptr
+	lda	timer
+	and	#$10
+	lsr	a
+;	sta	aa
+;	clc
+;	adc	#low karpat	
+;	sta	pptr+0
+;	lda	#0
+;	adc	#high karpat
+;	sta	pptr+1
+;	lda	aa
+	lsr	a
+	lsr	a
+	lsr	a
+	tay
+	lda	tekpcl+2,y
+	sta	pcol
+	lda	tekxl,x
+	sta	pxl
+	lda	tekxh,x
+	sta	pxh
+	lda	teky,x
+	sta	py
+	lda	tekoam
+	sta	poam
+	clc
+	adc	#3
+	sta	tekoam
+	jmp	put2x3
+;
+;
+karpat:
+	db	$28,$29,$38,$39,$48,$49	;,$fd,$fd
+;	db	$29,$28,$39,$38,$49,$48,$fd,$fd
+;
+obkdsp:
+	lda	#1*8
+	sta	aa
+	inc	tekflp,x
+	lda	tekflp,x
+	and	#8
+	lsr	a
+	sta	bb
+	jmp	tekdrw	
+;
+;
+robdsp:
+	lda	#2*8
+	sta	aa
+	inc	tekflp,x
+	lda	tekflp,x
+	and	#8
+	lsr	a
+	sta	bb
+	jmp	tekdrw	
+;
+;
+km0dsp:
+km1dsp:
+km2dsp:
+km3dsp:
+km4dsp:
+	lda	tekbfl
+	bne	dfldrw
+	lda	#3*8
+	sta	aa
+	inc	tekflp,x
+	lda	tekflp,x
+	and	#8
+	lsr	a
+	sta	bb
+	jmp	tekdrw	
+;
+;
+bl0dsp:
+bl1dsp:
+bl3dsp:
+	lda	tekbfl
+	bne	dfldrw
+	lda	#4*8
+	sta	aa
+	inc	tekflp,x
+	lda	tekflp,x
+	and	#4
+	sta	bb
+	jmp	tekdrw	
+;
+dfldrw:
+	lda	tekxl,x
+	sta	pxl
+	lda	tekxh,x
+	sta	pxh	
+	lda	teky,x
+	sta	py
+	lda	#2
+	sta	pcol
+	jsr	toams2
+	ldy	tekbeg
+	dey
+	tya
+	asl	a
+	asl	a
+	clc
+	adc	#low dflpat
+	sta	pptr+0
+	lda	#0
+	adc	#high dflpat
+	sta	pptr+1
+	jmp	put2x2
+;
+;
+dflpat:
+	db	$e2,$e3,$f2,$f3	;kaki
+	db	$e6,$e7,$e8,$e9	;onion
+	db	$ea,$eb,$ec,$ed	;orenge
+;
+;
+tekdrw:
+	lda	aa
+	clc
+	adc	bb
+;	clc
+	adc	#low thnpat	
+	sta	pptr+0
+;	lda	tekdir,x
+;	and	#2
+;	asl	a
+;	asl	a
+;	clc
+;	adc	pptr+0
+;	clc
+;	adc	#low thnpat
+;	sta	pptr+0
+;
+	lda	#0
+	adc	#high thnpat
+	sta	pptr+1
+	lda	aa
+	lsr	a
+	lsr	a
+	lsr	a
+	tay
+	lda	tekdir,x
+	ror	a
+	ror	a
+	ror	a
+	ror	a
+	and	#$40
+	ora	tekcol,y
+	sta	pcol
+	lda	tekxl,x
+	sta	pxl
+	lda	tekxh,x
+	sta	pxh
+	lda	teky,x
+	sta	py
+;	txa
+;	asl	a
+;	clc
+	jsr	toams2
+	jmp	put2x2
+;
+toams2:
+	lda	tekoam	;	adc	#5
+	sta	poam
+	clc
+	adc	#2
+	sta	tekoam
+	rts
+;
+thnpat:
+	db	$b0,$b1,$c0,$c1
+	db	$f6,$f7,$f8,$f9
+;	db	$b1,$b0,$c1,$c0
+;	db	$f7,$f6,$f9,$f8
+obapat:
+	db	$8a,$8b,$9a,$9b
+	db	$8c,$8d,$9c,$9d
+;	db	$8b,$8a,$9b,$9a
+;	db	$8d,$8c,$9d,$9c
+robpat:
+	db	$bf,$cd,$fd,$d0
+	db	$ce,$cf,$fd,$d1
+;	db	$cd,$bf,$d0,$fd
+;	db	$cf,$ce,$d1,$fd
+kmnpat:
+	db	$24,$25,$34,$35
+	db	$26,$27,$36,$37
+;	db	$25,$24,$35,$34
+;	db	$27,$26,$37,$36
+blnpat:
+	db	$4a,$4b,$4c,$4d
+	db	$44,$45,$46,$47
+;	db	$4b,$4a,$4d,$4c
+;	db	$45,$44,$47,$46
+;
+tekcol:
+	db	1,1,1,2,2
+;
+catdsp:	;kagechiyo
+	lda	tekxl,x
+	sta	pxl
+	lda	tekxh,x
+	sta	pxh
+	lda	teky,x
+	sta	py
+;
+	inc	tekflp,x
+	lda	tekflp,x
+	and	#8
+	sta	aa
+	asl	a
+	asl	a
+	asl	a
+	ora	#2
+	sta	pcol
+;
+;	lda	aa
+;	lsr	a
+;	clc
+;	adc	#low catpat
+;	sta	pptr+0
+;	lda	#high catpat
+;	adc	#0
+;	sta	pptr+1
+	PTRSET	catpat,pptr
+	jsr	toams2
+	jmp	put2x2		
+;
+catpat:	
+	db	$30,$31,$40,$41
+;	db	$31,$30,$41,$40
+;
+kemdsp:
+	inc	tekflp,x
+	PTRSET	kempat,pptr
+	lda	tekflp,x
+	and	#8
+;	sta	aa
+;	clc
+;	adc	#low kempat
+;	sta	pptr+0
+;	lda	#0
+;	adc	#high kempat
+;	sta	pptr+1
+;	lda	aa		
+	asl	a
+	asl	a
+	asl	a
+	ora	#2
+	sta	pcol
+	jsr	toams2
+	lda	tekxl,x
+	sta	pxl
+	lda	tekxh,x
+	sta	pxh
+	lda	teky,x
+	sta	py
+	jsr	put2x2
+	lda	tekxl,x
+	sta	pxl
+	lda	tekxh,x
+	sta	pxh
+	lda	teky,x
+	clc
+	adc	#$10
+	sta	py
+	lda	pptr+0
+	clc
+	adc	#4
+	sta	pptr+0
+	lda	pptr+1
+	adc	#0
+	sta	pptr+1
+	jsr	toams2
+	jmp	put2x2
+;
+kempat:
+	db	$22,$23,$32,$33,$42,$43,$bd,$be
+;	db	$23,$22,$33,$32,$43,$42,$be,$bd
+;
+hakdsp:
+	lda	tekxl,x
+	sta	pxl
+	lda	tekxh,x
+	sta	pxh
+	lda	teky,x
+	sta	py
+	lda	teksta,x
+	beq	hakd00
+	lda	tekdir,x
+	and	#2
+	lsr	a
+	tay
+	lda	tekpcl+2,y
+	sta	pcol
+	lda	teksta,x
+	cmp	#1
+	beq	hakd10
+	jmp	hakd20
+hakd00:	lda	timer
+	and	#$4
+	clc
+	adc	#low kemuri
+	sta	pptr+0
+	lda	#0
+	adc	#high kemuri
+	sta	pptr+1
+	lda	#2
+	sta	pcol
+	jsr	toams2
+	jmp	put2x2	
+hakd10:
+;	lda	tekdir,x
+;	and	#2
+;	asl	a
+;	clc
+;	adc	#low hakpat
+;	sta	pptr+0
+;	lda	#0
+;	adc	#high hakpat
+;	sta	pptr+1
+	PTRSET	hakpat,pptr
+	jsr	toams2
+	jmp	put2x2		
+hakd20:	;big
+;	lda	tekdir,x
+;	and	#2
+;	asl	a
+;	asl	a
+;	clc
+;	adc	#low hakpt1	
+;	sta	pptr+0
+;	lda	#0
+;	adc	#high hakpt1
+;	sta	pptr+1
+	PTRSET	hakpt1,pptr
+	lda	tekoam
+	sta	poam
+	clc
+	adc	#3
+	sta	tekoam
+	jmp	put2x3
+;
+;
+hakpat:	;mini
+	db	$b6,$b7,$c6,$c7
+;	db	$b7,$b6,$c7,$c6
+kemuri:	;kemuri
+	db	$94,$95,$a4,$a5
+	db	$96,$97,$a6,$a7
+hakpt1:
+	db	$56,$57,$66,$67,$76,$77	;,$fd,$fd
+;	db	$57,$56,$67,$66,$77,$76,$fd,$fd
+;
+tekpcl:
+	db	$01,$41
+	db	$02,$42
+	db	$03,$43
+;
+;
+;-------------------------------------------------------------
+;
+misini:	ldx	#MISMAX-1
+	lda	#$ff
+misilp:	sta	misflg,x
+	dex
+	bpl	misilp
+	rts
+;
+maxmis:
+	db	MISMAX-5,MISMAX-3,MISMAX-1,MISMAX-1
+;
+misgen:
+	sta	aa
+	lda	mandir
+	and	#$80
+	bne	misgrt
+	lda	tekbfl
+	bne	misgrt
+	ldy	nanido
+	lda	maxmis,y
+	tay
+;	ldy	#MISMAX-1
+	lda	aa
+	cmp	#2
+	beq	misgl0
+misglp:
+	sty	dd
+	lda	misflg,y
+	cmp	#$ff
+	beq	misgok
+	ldy	dd
+	dey
+	bpl	misglp
+misgrt:	rts
+;
+misgl0:
+	ldy	#MISMAX-1
+misgl1:
+	sty	dd
+	lda	misflg,y
+	cmp	#$ff
+	bne	misg1s
+	jsr	misgok
+misg1s:	ldy	dd
+	dey
+	bpl	misgl1
+	rts
+;
+misgok:
+	lda	aa
+	sta	misflg,y
+;
+	lda	tekxl,x
+	clc
+	adc	#4
+	sta	misxl,y
+	lda	tekxh,x
+	adc	#0
+	sta	misxh,y
+	lda	teky,x
+	clc
+	adc	#4
+	sta	misy,y
+;
+	lda	misflg,y
+	asl	a
+	tay
+	INDJMP	misgtb,y
+;
+;
+misgtb:
+	JTBL	surgok
+	JTBL	kmigok
+	JTBL	hksgok
+	JTBL	bakgok
+	JTBL	fltgok
+;
+;
+fltgok:
+bakgok:
+kmigok:	;kaminari
+	ldy	dd
+	rts
+;
+hksgok:
+	ldy	dd
+	tya
+	sta	misdir,y
+	lda	many
+	cmp	teky,x
+	lda	#0
+	ror	a
+	ora	misdir,y
+	sta	misdir,y
+	rts
+;
+;
+surgok:
+	ldy	dd
+	lda	#0
+	sta	mismod,y
+	lda	#3
+	sta	bb
+	lda	misxl,y
+	sec
+	sbc	manxl
+	sta	aa
+	lda	misxh,y
+	sbc	manxh
+	bcs	misxdi
+	dec	bb
+	lda	aa
+	eor	#$ff
+	sta	aa	
+misxdi:	lda	aa
+	sta	misdx,y
+misgo1:
+	lda	misy,y
+	sec
+	sbc	#4
+	sec
+	sbc	many
+	bcs	misydi
+	dec	bb
+	dec	bb
+	eor	#$ff
+misydi:	sta	misdy,y
+	cmp	misdx,y
+	bcs	misvci
+	lda	bb
+	clc
+	adc	#4
+	sta	bb
+misvci:	lda	bb
+	sta	misdir,y
+	rts
+
+;
+mismov:	ldx	#MISMAX-1
+mismlp:	stx	cc
+	lda	misflg,x
+	cmp	#$ff
+	beq	mismsk
+	asl	a
+	tay
+	INDCAL	mismtb,y
+;
+	jsr	misman
+;
+	lda	misy,x
+	sbc	#$30
+	cmp	#$a0
+	bcs	mised
+	lda	misxl,x
+	sec
+	sbc	scrolh
+	tay
+	lda	misxh,x
+	sbc	scrole
+	cpy	#$ff
+	sbc	#0
+	bcc	mismsk
+mised:	lda	#$ff
+	sta	misflg,x
+mismsk:	ldx	cc
+	dex
+	bpl	mismlp
+	rts
+;
+mismtb:
+	JTBL	surmov
+	JTBL	kmimov
+	JTBL	hksmov
+	JTBL	bakmov
+	JTBL	fltmov
+;
+hksmov:
+	lda	misdir,x
+	rol	a
+	rol	a
+	and	#1
+	tay
+	lda	misy,x
+	clc
+	adc	hskvmd,y
+	sta	misy,x
+	lda	misdir,x
+	asl	a
+	tay
+	lda	misxl,x
+	clc
+	adc	hskhmd+0,y
+	sta	misxl,x
+	lda	misxh,x
+	adc	hskhmd+1,y
+	sta	misxh,x
+	rts
+;
+;
+hskvmd:
+	db	-4,4
+hskhmd:
+	dw	-4,-2,-1,1,2,4
+;
+;
+surmov:	;shuriken nerai
+	lda	misdir,x
+	cmp	#4
+	bcc	misylp
+	and	#3
+	asl	a
+	tay
+	lda	misxl,x
+	clc
+	adc	misxad+0,y
+	sta	misxl,x
+	lda	misxh,x
+	adc	misxad+1,y
+	sta	misxh,x
+	lda	mismod,x
+	clc
+	adc	misdy,x
+	bcs	msmdov
+	cmp	misdx,x
+	bcc	nomvmx
+msmdov:	sbc	misdx,x
+	pha
+	lda	misdir,x
+	and	#3
+	tay
+	lda	misy,x
+	clc
+	adc	misyad,y
+	sta	misy,x
+	pla
+nomvmx:	sta	mismod,x
+	rts
+;
+misylp:
+	tay
+	lda	misy,x
+	clc
+	adc	misyad,y
+	sta	misy,x
+	lda	mismod,x
+	clc
+	adc	misdx,x
+	bcs	msmdou
+	cmp	misdy,x
+	bcc	nomvmy
+msmdou:	sbc	misdy,x
+	pha
+	lda	misdir,x
+	asl	a
+	tay
+	lda	misxl,x
+	clc
+	adc	misxad+0,y
+	sta	misxl,x
+	lda	misxh,x
+	adc	misxad+1,y
+	sta	misxh,x
+	pla
+nomvmy:	sta	mismod,x
+	rts
+;
+misxad:
+	dw	2,-2,2,-2
+misyad:
+	db	2,2,-2,-2
+;
+;
+kmimov:
+	inc	misy,x
+fltmov:
+bakmov:
+	inc	misy,x
+	rts
+;
+;
+misman:
+	lda	mandir
+	and	#$80
+	bne	msmnrt
+;
+	ldy	misflg,x	;	lda	misflg,x
+	iny			;	cmp	#$ff
+	beq	msmnrt
+;
+	lda	misy,x
+	sec
+	sbc	many
+	cmp	#16
+	bcs	msmnrt
+;
+	lda	misxl,x
+	clc
+	adc	#7
+	tay
+	lda	misxh,x
+	adc	#0
+	sta	aa
+	tya
+	sec
+	sbc	manxl
+	tay
+	lda	aa
+	sbc	manxh		
+	cpy	#8+7
+	sbc	#0
+	bcs	msmnrt
+;
+	ldy	misflg,x
+	cpy	#4
+	beq	msmno2
+	lda	kirflg
+	bne	msmnrt
+	lda	scrdbl
+	bne	msmnrt
+msmno2:	lda	#$ff
+	sta	misflg,x
+	tya
+	asl	a
+	tay
+	INDJMP	mitatb,y
+msmnrt:	rts	
+;
+mitatb:
+	JTBL	suratr
+	JTBL	kmiatr
+	JTBL	hksatr
+	JTBL	bakatr
+	JTBL	fltatr
+	
+;
+kmiatr:
+	lda	#$0f
+	sta	colwrk+16+2
+	lda	#$15
+	sta	colwrk+16+3	
+bakatr:	
+	lda	#$0a
+	jsr	effset
+	lda	#60	;40
+	sta	lasyfl
+	lda	mandir
+	ora	#$80
+	sta	mandir
+	dec	mandmg
+	dec	mandmg
+	bpl	retret
+	lda	#0
+	sta	mandmg
+	jmp	manout
+;
+suratr:
+hksatr:
+	lda	#60	;20
+atratr:	sta	lasyfl
+	lda	#$0a
+	jsr	effset
+	lda	mandir
+	ora	#$80
+	sta	mandir
+	lda	#1
+	sta	misafl	
+retret	rts
+;
+fltatr:
+	lda	#9
+	sta	mandmg
+	lda	#1
+	jmp	effset
+;
+misdsp:
+	ldx	#MISMAX-1
+misdlp:
+	stx	cc
+	ldy	misflg,x	;	lda	misflg,x
+	iny			;	cmp	#$ff
+	beq	misdsk
+;	asl	a
+;	tay
+;	jsr	misdsb	;INDCAL	misdtb,y
+;
+;	jsr	misdrw
+misdrw:
+	lda	misxl,x
+	sec
+	sbc	scrolh
+	sta	pxl
+	lda	misxh,x
+	sbc	scrole
+	bne	msdrrt	
+;
+	lda	misoam,x
+	sta	bb
+	lda	misy,x
+	ldy	bb
+	inc	bb
+	jsr	sprput
+;
+	ldy	misflg,x
+	lda	mispat,y
+	cmp	#$80
+	bne	misdro
+	lda	timer
+	and	#4
+	lsr	a
+	lsr	a
+;	clc
+	adc	mispat,y	;	lda	mischr	;#$80
+misdro:	ldy	bb
+	inc	bb
+	jsr	sprput
+;
+	ldy	misflg,x
+	lda	misctr,y	;	lda	miscol	;#0
+	ldy	bb
+	inc	bb
+	jsr	sprput
+;
+	lda	pxl
+	ldy	bb
+	jsr	sprput
+;
+msdrrt:
+misdsk:
+	ldx	cc
+	dex
+	bpl	misdlp
+	rts
+;
+;misdtb:
+;	JTBL	surdsp
+;	JTBL	kmidsp
+;	JTBL	hksdsp
+;	JTBL	bakdsp
+;	JTBL	fltdsp
+;;
+;hksdsp:
+;surdsp:
+;	lda	timer
+;	and	#4
+;	lsr	a
+;	lsr	a
+;;	clc
+;	adc	#$80
+;	sta	mischr
+;	lda	#0
+;	sta	miscol
+;	rts
+;;
+;kmidsp:
+;	lda	#$84
+;	sta	mischr
+;	lda	#1
+;	sta	miscol
+;	rts
+;;
+;bakdsp:
+;	lda	#$d2
+;	sta	mischr
+;	lda	#2
+;	sta	miscol
+;	rts
+;;
+;;
+;fltdsp:	lda	#$f4
+;	sta	mischr
+;	lda	#1
+;	sta	miscol
+;	rts
+;
+;
+mispat:	db	$80,$84,$80,$d2,$f4
+misctr:	db	0,1,0,2,1
+;
+misoam:
+	db	15*4,47*4,16*4,48*4,17*4,49*4
+;
+;--------------------------------------------------------------	
+;
+mchini:
+	lda	#$ff
+	sta	mchflg
+	rts
+;
+mchgen:
+	lda	kanflg
+	bne	mchgrt
+	lda	shnflg
+	cmp	#$80
+	beq	mchgrt
+	ldy	jinflg
+	iny
+	bne	mchgrt	
+;
+	lda	tekdth
+	tax
+	cmp	#10
+	bcc	mchgrt
+	ldy	mchflg	;	lda	mchflg
+	iny		;	cmp	#$ff
+	bne	mchgrt
+	lda	#$a8
+	sta	mchy
+	lda	scrolh
+	clc
+	adc	#$ff
+	sta	mchxl
+	lda	scrole
+	adc	#0
+	sta	mchxh
+	lda	#0
+	sta	mchflg
+	sta	mchflp
+	sta	tekdth
+	sta	mchatr
+mchgrt:	rts
+;
+mchm10:
+	dec	mchflp
+	bne	mchgrt
+	lda	mchflg
+	and	#2
+	bne	mchm20
+	jsr	rnd
+	ldy	#2
+	and	#$f
+	bne	mchmkk
+	iny
+mchmkk:	sty	mchflg
+	rts
+mchm20:
+	lda	#$ff
+	sta	mchflg
+	rts
+mchmov:
+	jsr	mchgen
+	ldy	mchflg	;	lda	mchflg
+	iny		;	cmp	#$ff
+	beq	mchmrt
+	cpy	#2	;	cmp	#1
+	bcs	mchm10
+;
+	lda	kanflg
+	bne	mchmkn
+;
+	lda	mchxl
+	sec
+	sbc	#1
+	sta	mchxl
+	lda	mchxh
+	sbc	#0
+	sta	mchxh
+;
+mchmkn:	lda	mchxl
+	sta	clipl
+	lda	mchxh
+	sta	cliph
+	jsr	clip
+	bcc	mchmrt
+	lda	#$ff
+	sta	mchflg	
+mchmrt:	
+	ldy	mchflg	;	lda	mchflg
+	iny		;	cmp	#$ff
+	beq	mctmrt
+mchtam:
+	ldx	#TAMMAX-1
+mctmlp:	ldy	tamafl,x	;	lda	tamafl,x
+	iny			;	cmp	#$ff
+	beq	mctmsk
+;
+	lda	tamay,x
+	clc
+	adc	#7
+	sec
+	sbc	mchy
+	cmp	#24+7
+	bcs	mctmsk
+;	
+	lda	tamaxl,x
+	clc
+	adc	#7
+	tay
+	lda	tamaxh,x
+	adc	#0
+	sta	aa
+	tya
+	sec
+	sbc	mchxl
+	tay
+	lda	aa
+	sbc	mchxh
+	cpy	#16+7
+	sbc	#0
+	bcs	mctmsk
+;
+	lda	#$ff
+	sta	tamafl,x
+	inc	mchatr
+	lda	mchatr
+	and	#3
+	bne	mctmok
+	lda	#1
+	sta	mchflg
+	lda	#128
+	sta	mchflp
+	lda	#5
+	jsr	scradd
+mctmok:	lda	#5
+	jmp	effset
+;
+mctmsk:	dex
+	bpl	mctmlp
+mchdrt:
+mctmrt:	rts	
+;
+;
+mchdsp:
+	ldx	mchflg
+	cpx	#$ff
+	beq	mchdrt
+	lda	mchcol,x
+	sta	pcol	
+	lda	mchxl
+	sta	pxl
+	lda	mchxh
+	sta	pxh
+	lda	mchy
+	sta	py	
+	lda	#21*4
+	sta	poam
+;
+	lda	mchflg
+	bne	mchd20
+;
+	lda	timer
+	and	#$3
+	bne	mchd10
+	ldx	mchflp
+	inx
+	txa
+	and	#$3
+	sta	mchflp
+mchd10:	lda	mchflp
+	asl	a
+	clc
+	adc	mchflp
+	asl	a
+	clc
+	adc	#low mchpat
+	sta	pptr+0
+	lda	#0
+	adc	#high mchpat
+	sta	pptr+1
+	jmp	put2x3
+;
+mchd20:
+	cmp	#2
+	bcs	mchd30
+	lda	timer
+	and	#$4
+	clc
+	adc	#low kemuri
+	sta	pptr+0
+	lda	#0
+	adc	#high kemuri
+	sta	pptr+1
+	jmp	put2x2
+;
+mchd30:	tay
+	lda	mchflp
+	cmp	#60
+	bcs	mchd31
+	and	#4
+	bne	mchdrt
+mchd31:	tya
+	and	#1
+	asl	a
+	asl	a
+;	clc
+	adc	#low makpat
+	sta	pptr+0
+	lda	#0
+	adc	#high makpat
+	sta	pptr+1
+	jmp	put2x2	
+;
+mchpat:
+	db	$50,$51,$60,$61,$70,$71
+	db	$52,$53,$62,$63,$72,$73
+	db	$50,$51,$60,$61,$70,$71
+	db	$54,$55,$64,$65,$74,$75
+;
+makpat:
+	db	$fd,$fd,$7c,$7d
+kaepat:
+	db	$86,$87,$88,$89
+;
+mchcol:
+	db	2,1,2,1
+;
+;
+;
+

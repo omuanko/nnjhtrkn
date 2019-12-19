@@ -1,0 +1,124 @@
+;
+;
+;	< NINJA HATTORI KUN >
+;				title
+;
+;
+tilmak:	;hattori title make
+	ldx	#$c0	;
+	lda	#$23
+	jsr	setadr
+	ldx	#$40
+	ldy	#1
+	lda	#$55
+	jsr	filvs
+	lda	#$23
+	ldx	#$c8
+	jsr	setadr
+	ldx	#$18
+	ldy	#1
+	lda	#0
+	jsr	filvs
+;
+	jsr	scores
+	jsr	scmsst
+	jsr	scrpr1
+;
+	lda	#low ($2000 + (5 * 32 + 6))
+	sta	p0+0
+	lda	#high ($2000 + (5 * 32 + 6))
+	sta	p0+1
+	lda	#8
+	sta	indexr+1
+	ldy	#0
+tillpy:
+	ldx	p0+0
+	lda	p0+1
+	jsr	setadr
+	lda	#21
+	sta	indexr+0
+tillpx:
+	lda	titdta,y
+	sta	vramdt
+	iny
+	dec	indexr+0
+	bne	tillpx
+	lda	p0+0
+	clc
+	adc	#32
+	sta	p0+0
+	lda	p0+1
+	adc	#0
+	sta	p0+1
+	dec	indexr+1
+	bne	tillpy
+;
+til1:
+	jsr	scores
+	PTRSET	stames,indexr
+	jsr	mesprt
+	PTRSET	hudmes,indexr
+	jsr	mesprt
+	PTRSET	fjimes,indexr
+;
+mesprt:
+	ldy	#0
+	lda	[indexr],y
+	iny
+	tax
+	lda	[indexr],y
+	iny
+;
+mespr2:	jsr	setadr
+meslop:
+	lda	[indexr],y
+	beq	mesret
+	sta	vramdt
+	iny
+	jmp	meslop
+mesret:	rts
+;
+;
+;
+;---------------------------------------------------------------
+;	HATTORI KUN TITLE DATA
+;
+;----------------------------------------------------------------
+;
+;	LOCATE 6,5	20*8 BYTE
+;
+;
+;	HATTORI KUN TITLE DATA
+;
+;----------------------------------------------------------------
+;
+;	LOCATE 6,5	20*8 BYTE
+;
+TITDTA:	db	$9F,$9F,$9F,$9F,$9F,$9F,$0D,$0E,$A0,$A1,$9F,$9F,$9F,$9F,$9F,$9F,$9F,$9F,$9F,$9F,$9F
+	db	$9F,$00,$01,$00,$01,$BC,$1D,$1E,$B0,$B1,$9F,$00,$01,$BC,$9F,$00,$01,$00,$01,$A3,$A4
+	db	$9F,$10,$11,$10,$11,$09,$0F,$1F,$A2,$B2,$9F,$10,$11,$AD,$9F,$10,$11,$10,$11,$B3,$B4
+	db	$9F,$10,$11,$10,$11,$09,$02,$02,$00,$01,$BC,$10,$04,$0A,$0B,$10,$11,$10,$11,$A5,$B5
+	db	$9F,$10,$11,$10,$11,$09,$03,$03,$10,$11,$09,$10,$AC,$1A,$1B,$12,$13,$10,$11,$A6,$AF
+	db	$9F,$05,$06,$07,$08,$09,$BA,$BA,$05,$06,$09,$10,$11,$0C,$1C,$A9,$BB,$05,$06,$B6,$B7
+	db	$14,$15,$16,$17,$18,$19,$9F,$14,$15,$16,$BE,$12,$13,$09,$9F,$9F,$14,$15,$16,$A8,$B8
+	db	$A9,$BB,$B9,$9F,$A9,$BB,$BD,$A9,$BB,$B9,$9F,$A9,$BB,$AE,$9F,$9F,$A9,$BB,$B9,$BB,$BB
+
+;
+;
+STAMES:
+;			16
+	DW	$2000 + (18 * 32 + 8)
+	DB	'PRESS',SPCCOD,'START',SPCCOD,'BUTTON',0
+;TOPMES:
+;	DW	$2000 + (18 * 32 + 10)
+;	DB	'TOP',$2D,0
+HUDMES:
+	DW	$2000 + (22 * 32 + 8)
+	DB	$40,SPCCOD,'1986',SPCCOD,'HUDSON',SPCCOD,'SOFT',0
+FJIMES:
+	DW	$2000 + (24 * 32 + 3)
+	DB	$40,'FUJIKO',$2E,'SHOGAKUKAN',$2E,'TV',SPCCOD,'ASAHI',0
+;
+;
+;
+;

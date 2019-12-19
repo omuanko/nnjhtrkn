@@ -1,0 +1,377 @@
+;
+;
+;	<NINJA HATTORI KUN> recall sub.
+;
+scrlrg:
+	lda	screnb
+	lsr	a
+	bcs	scrmrt
+	lda	#0
+	sta	screnb
+	lda	scrolh
+	clc
+	adc	#low (60*8)
+	tax
+	lda	scrole
+	adc	#high (60*8)
+	sta	crsptr
+	sta	wrtptr
+	cmp	#ARELEN
+	bcs	scrmrt
+;
+	txa
+	lsr	wrtptr
+	ror	a
+	lsr	a
+	lsr	a
+	sta	wrtptr
+;
+	and	#$1f
+	bne	scrmv0
+	lda	area
+	asl	a
+	asl	a
+	asl	a
+	asl	a
+	clc
+	adc	crsptr
+	tay	
+	lda	areadt,y
+	jsr	newpic
+scrmv0:	lda	wrtptr
+	and	#3
+	bne	crsnon
+	lda	#2
+	sta	screnb	;color expand ok
+crsnon:	lda	screnb
+	ora	#1
+	sta	screnb
+scrmrt:	rts
+;
+fscrst:
+	lda	scrole
+	sta	crsptr
+	and	#1
+	asl	a
+	asl	a
+	asl	a
+	asl	a
+	asl	a		
+	sta	wrtptr
+	lda	#60
+	sta	cc
+;
+scrstl:
+	lda	wrtptr
+	and	#$1f
+	bne	fscssk
+	lda	area
+	asl	a
+	asl	a
+	asl	a
+	asl	a
+	clc
+	adc	crsptr
+	tax
+	lda	areadt,x
+	jsr	newpic
+	inc	crsptr
+;
+fscssk:	lda	wrtptr
+	and	#$3
+	bne	fscskp
+	jsr	ITARC2
+	jsr	clonpt
+;
+fscskp:	jsr	ITAREC
+	jsr	olnput
+;
+	inc	wrtptr
+	lda	wrtptr
+	and	#$3f
+	sta	wrtptr
+	dec	cc
+	bne	scrstl
+	rts
+;
+;
+;
+olnput:	; one line chr. put
+;
+	lda	wrtptr
+	and	#$1f	
+	clc
+	adc	#$80
+	tax
+	ldy	#$20
+	lda	wrtptr
+	and	#$20
+	beq	scsssk	
+	ldy	#$24
+scsssk:	tya
+	jsr	setadr
+;
+	lda	creg0m
+	ora	#$04
+	sta	creg0
+	ldy	#256-24		;$0
+;
+olnplp:	lda	ITABUF-256+24,y	;[olpadr],y
+	sta	vramdt
+	iny
+;	cpy	#24	;24	;16
+	bne	olnplp	;	bcc	olnplp
+;
+	lda	creg0m
+	sta	creg0
+	lda	#0
+	sta	indexr+1
+	lda	wrtptr	;windst
+	and	#$3f
+	sta	indexr+0
+	asl	a	
+	clc
+	adc	indexr+0
+	asl	a
+	rol	indexr+1
+	clc
+	adc	#low gamen
+	sta	indexr+0
+	lda	#high gamen
+	adc	indexr+1
+	sta	indexr+1
+;
+	ldy	#5
+gamrec:	;gamen atr get
+	lda	ITABUF+30,y
+	sta	[indexr],y
+	dey
+	bpl	gamrec
+	rts
+;
+clonpt:	;color one line put
+	;col cstadr	ds	1
+;;			
+	lda	wrtptr
+	lsr	a
+	lsr	a
+	and	#$7
+	clc
+	adc	#$c8
+	tax
+;	sta	cstadr
+;
+	ldy	#$23
+	lda	wrtptr
+	and	#$20
+	beq	colpsk
+	ldy	#$27
+colpsk:	sty	cstadr
+;
+	ldy	#256-6
+clplop:
+	lda	cstadr
+	jsr	setadr
+;
+	lda	ITABUF+24-256+6,y	;[olpadr],y
+	sta	vramdt
+	txa
+	clc
+	adc	#8
+	tax
+	iny
+	bne	clplop
+;
+	rts
+;
+;
+;
+;----------------------------------------------------------------------
+;
+;
+;
+CHRSFT	MACRO
+	DEC	CHRBIT
+	BPL	?%K
+	PHA
+	LDA	#7
+	STA	CHRBIT
+	LDA	[CHRBP],Y
+	STA	CHRSFD
+	PLA
+	INY
+	BNE	?%K
+	INC	CHRBP+1
+?%K:	ASL	CHRSFD
+	ENDM
+;
+MAPSFT	MACRO
+	DEC	MAPBIT
+	BPL	?%K
+	PHA
+	LDA	#7
+	STA	MAPBIT
+	LDA	[MAPBP],Y
+	STA	MAPSFD
+	PLA
+	INY
+?%K:	ASL	MAPSFD
+	ENDM
+;
+COLSFT	MACRO
+	DEC	COLBIT
+	BPL	?%K
+	PHA
+	LDA	#7
+	STA	COLBIT
+	LDA	[COLBP],Y
+	STA	COLSFD
+	PLA
+	INY
+?%K:	ASL	COLSFD
+	ENDM
+;
+;
+ITAREC:
+;
+;CHR
+;
+	LDY	CHRBYT
+	LDX	#(256-24)
+	LDA	#$9F
+;
+ITARCL:	CHRSFT
+	BCC	ITAB0
+;
+	LDA	#$04
+ITAGDL:	CHRSFT
+	ROL	A
+	BCC	ITAGDL
+	ADC	#$5F	;ADD #$60   ( CARRY = ALWAYS 1 )
+;
+ITAB0:	STA	ITABUF-256+24,X
+	INX
+	BNE	ITARCL
+;
+	STY	CHRBYT
+;
+;
+;MAP
+;
+	LDY	MAPBYT
+	MAPSFT
+	BCS	ITAMGO
+	JMP	ITAACD
+;
+ITAMGO:	LDA	#$01
+	LDX	#5
+ITAMFL:	STA	ITABUF+30,X
+	DEX
+	BPL	ITAMFL
+;
+	LDX	#(256-6)
+ITAM1L:	MAPSFT
+	BCS	ITAM2
+;
+	MAPSFT
+	ROL	ITABUF+30-256+6,X
+	MAPSFT
+	ROL	ITABUF+30-256+6,X
+	BCC	ITAM1L
+	INX
+	BNE	ITAM1L
+	JMP	ITAACD
+;
+ITAM2:	LDA	#$08
+ITAM2A:	MAPSFT
+	ROL	A
+	BCC	ITAM2A
+	STA	ITACOU
+	LDA	#0
+	MAPSFT
+	ROL	A
+	MAPSFT
+	ROL	A
+	ROR	A
+	ROR	A
+	ROR	A
+	STA	ITADAT
+;
+ITAM2B:	LDA	ITADAT
+	ROL	A
+	ROL	ITABUF+30-256+6,X
+	ROL	A
+	ROL	ITABUF+30-256+6,X
+	BCC	ITAM2C
+	INX
+	BEQ	ITAACD
+ITAM2C:	DEC	ITACOU
+	BNE	ITAM2B
+	JMP	ITAM1L
+;
+ITAACD:	STY	MAPBYT
+	RTS
+;
+;
+;COLOR
+;
+ITARC2:	LDY	#5
+ITATMC:	LDA	[COLBP],Y
+	STA	ITABUF+24,Y
+	DEY
+	BPL	ITATMC
+;
+	LDY	COLBYT
+	COLSFT
+	BCC	ITAEOJ
+;
+	LDX	#(256-6)
+ITACS0:	COLSFT
+	BCC	ITACS1
+	LDA	#$01
+ITACSL:	COLSFT
+	ROL	A
+	BCC	ITACSL
+	STA	ITABUF+24-256+6,X
+ITACS1:	INX
+	BNE	ITACS0
+ITAEOJ:	STY	COLBYT
+	RTS
+;
+;INPUT A=PICTURE No.
+;
+NEWPIC:	STA	ITADAT
+	ASL	A
+	ADC	ITADAT	;CARRY = ALWAYS LOW
+	ASL	A
+	TAX
+	LDA	ITAADT+0,X
+	STA	CHRBP
+	LDA	ITAADT+1,X
+	STA	CHRBP+1
+	LDA	ITAADT+2,X
+	STA	MAPBP
+	LDA	ITAADT+3,X
+	STA	MAPBP+1
+	LDA	ITAADT+4,X
+	STA	COLBP
+	LDA	ITAADT+5,X
+	STA	COLBP+1
+	LDA	#6
+	STA	COLBYT
+	LDA	#0
+	STA	CHRBYT
+	STA	CHRBIT
+	STA	MAPBYT
+	STA	MAPBIT
+	STA	COLBIT
+;
+	LDX	#5
+NEWP1:	STA	ITABUF+30,X
+	DEX
+	BPL	NEWP1
+	LDA	#$0C
+	STA	ITABUF+34
+	RTS
+;
+

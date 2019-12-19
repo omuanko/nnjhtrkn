@@ -1,0 +1,685 @@
+;
+;
+;	<NINJA HATTORI KUN> for  FAMILY COMPUTER
+;
+	cpu	'6502'
+;
+;
+adrchk	equ	0	;check memory location
+satsu	equ	0	;satsuei 
+debug	equ	0	;rom or ram
+DEBSTR	equ	$6000	;debug start adrs
+ROMSTR	equ	$8000	;rom start
+;
+;
+;	address	equ
+;
+creg0	equ	$2000			; control register 0
+creg1	equ	$2001			; control register 1
+stareg	equ	$2002			; status register
+oamadr	equ	$2003			; object attr memory address
+oamdat	equ	$2004			; ////////////////// data
+scrreg	equ	$2005			; scroll register
+vramad	equ	$2006			; vram address register
+vramdt	equ	$2007			; vram data register
+dmabnk	equ	$4014
+joyrgt	equ	$4016
+joylft	equ	$4017
+;
+;	data equ
+;
+CREG0D	equ	$10	;		;ctrl reg 0 data
+VRMOND	equ	$1e	;$18		;ctrl reg0 data (on)
+VRMOFD	equ	$0			;///////////////(off)
+;
+SCRLV	equ	$df	;scroll v pos
+;
+ARELEN	equ	16	;8	;area length
+ARETIM	equ	180	;240	;area clear time
+;
+CLRCOD	equ	$9f	;toumei
+SPCCOD	equ	$8e	;space
+;
+;	org	$0000
+;--------------- zero page work for prog. -------------------------
+;		< Don't care !!!!!!! >
+aa	ds	1
+bb	ds	1
+cc	ds	1
+dd	ds	1
+p0	ds	2
+;
+;----------------------- zero page work for system ---------------------
+indexr	ds	2	; indirect jmp
+creg0m	ds	1	; ctrl reg 0 buffer
+creg1m	ds	1	; ctrl reg 1 buffer
+scrolh	ds	1	; scrl reg h buffer
+scrole	ds	1	; scroll h ex. bit
+hscrl0	ds	1	; h scroll low
+hscrl1	ds	1	;///////// high
+mainjf	ds	1	; main job flag
+scesav	ds	1
+;
+savex	ds	1
+savey	ds	1
+;
+;----------------  joy work -------------------
+joyone	ds	1	;joy pad one
+joytwe	ds	1	;/////// twe
+;
+ptposl	ds	1	;spr put x work low
+ptposh	ds	1	;////////////// high
+;
+timer	ds	1	; gen. timer 0 ==> 255
+;
+clsdat	ds	1	;cls data
+;
+;rnd val
+seed1	ds	1
+seed2	ds	1
+seed3	ds	1
+seed4	ds	1
+;
+ninodr	ds	1	;ninpou order 
+;
+;
+;put2x2
+pxl	ds	1
+pxh	ds	1
+py	ds	1
+pcol	ds	1
+pptr	ds	2
+poam	ds	1
+;
+ptx	ds	1
+ptlopc	ds	1
+popos	ds	1
+;
+;
+clipl	ds	1
+cliph	ds	1
+;
+;---------------------------------------------------------
+;screen put 
+;
+;
+windst	ds	1	;scrol ptr for chr
+crsptr	ds	1	;def-men ptr 0 to 7
+cstadr	ds	1	;color put addr. for ppu 
+screnb	ds	1	; bit 0:scroll enable,1:R or L
+wrtptr	ds	1	;scroll rewrite pointer
+gamadr	ds	2	;gamen atr get ptr
+mchkxl	ds	1	;///////////// x low
+mchkxh	ds	1	;///////////// x high
+mchky	ds	1	;///////////// y
+;
+;
+;(ITA WORK)
+CHRBP:	DS	2
+CHRBYT:	DS	1
+CHRBIT:	DS	1
+CHRSFD:	DS	1
+MAPBP:	DS	2
+MAPBYT:	DS	1
+MAPBIT:	DS	1
+MAPSFD:	DS	1
+COLBP:	DS	2
+COLBYT:	DS	1
+COLBIT:	DS	1
+COLSFD:	DS	1
+ITACOU:	DS	1
+ITADAT:	DS	1
+ITABUF:	DS	36
+;
+;
+;
+;ITA MUSIC & EFFECT
+;
+;	EFFECT
+;
+SOGATM:	DS	1
+EFFCMD:	DS	1
+EFFCOD:	DS	1
+EFFCNT:	DS	3
+EFFW1:	DS	1
+EFFW2:	DS	1
+EFFW3:	DS	1
+;
+;
+;
+;	MUSIC
+;
+PAUSE:	DS	1
+CHCODE:	DS	1
+MUSDAT:	DS	1
+MUSCMD:	DS	1
+MUSCNT:	DS	3
+MUSLEN:	DS	3
+MUSTOP:	DS	6
+MUSADR:	DS	2
+MUSPTR:	DS	3
+RPTPTR:	DS	3
+RPTTIM:	DS	3
+MTAI:	DS	3
+MATT:	DS	3
+MLEN:	DS	3
+MSWP:	DS	2
+;
+selnfl	ds	1	;nin sel sound stp
+naksfl	ds	1	;naki sound stp
+;nowmus	ds	1	;music number before pause 
+;
+;-------------------------------------------------------------
+;	<<<< hattori kun work area >>>>
+	msg	*,'manx',scrolh,':scrolh'
+manxl	ds	1	;hattori x pos low
+manxh	ds	1	;///////////// high
+many	ds	1	;/////// y ///
+mandir	ds	1	;////////// direction
+;bit0move?,1:r(1)orl(0),2:jump,3,jmpb chk,4:tama uchif.
+manflp	ds	1	;hattori walk count 0 to 3
+walkcn	ds	1	;hattori ///// stop count
+wlkstp	ds	1	;////////////// walk step
+stopcn	ds	1	;stop wait
+mancnt	ds	1	;man wlak counter
+mjpcnt	ds	1	;///////////// jump & fall count
+tmscnt	ds	1	;tama hassha patt. gime
+tmdcnt	ds	1	;tama next deru count
+trptcn	ds	1	;////////repaet /////
+hmvdis	ds	1	;hattori 1po move kyori
+mandmg	ds	1	;hattori ga kohga ni atatta damage count
+ashmiz	ds	1	;mizu gumo no toki mizu ni notta flag
+miztch	ds	1	;fall no toki mizuni fureta
+mansyu	ds	1	;hattori shouryo jo totta flag
+lasyfl	ds	1	;area last men tetsu arei atari count
+tekbfl	ds	1	;tokutei no tokoro de jump de bonus no flag
+tekbeg	ds	1	;////////////////// edge 0 no 1 keiken
+wrpflg	ds	1	;warp flag
+nowdis	ds	1	;walk speed before warp 
+misafl	ds	1	;misaile ni attata flag 
+;
+;
+;--------------------------------------------------------------
+;----------------------------------------------------------
+TAMMAX	equ	4	;<<< shuriken work area >>>
+;
+tamafl	ds	TAMMAX	;tama flag 0:left,1:right,2:ul,3:ur,4:up,0ff:disable
+tamaxl	ds	TAMMAX	;tama x pos. low
+tamaxh	ds	TAMMAX	;/////////// high
+tamay	ds	TAMMAX	;tama y pos.
+tamacn	ds	TAMMAX	;tama move counter
+;
+mtmcnt	ds	1	;midruuch pos
+midtim	ds	1	;midareuch time
+tmgmax	ds	1	;tama gen. max kosuu
+tamnxt	ds	1	;tama next wait
+tamrpt	ds	1	;tama repeat time
+;
+;
+;---------------------------------------------------------------
+;machine ninja
+mchflg	ds	1
+mchxl	ds	1
+mchxh	ds	1
+mchy	ds	1
+mchflp	ds	1
+;
+mchatr	ds	1
+;---------------------------------------------------------
+bittbl
+;
+rigbtn
+bit0st	ds	1
+;
+lefbtn
+bit1st	ds	1
+;
+fusbtn
+bit2st	ds	1
+;
+upbtn
+bit3st	ds	1
+;
+strbtn
+bit4st	ds	1
+;
+ninsel
+selbtn
+bit5st	ds	1
+;
+tambtn
+bit6st	ds	1
+;
+jmpbtn
+bit7st	ds	1
+;
+;------------------------------------------------------------
+EZ	equ	*
+;---------------------  < $ed ======> $10f >--------------------------------
+;                      debug board reserved !!!!!!
+;----------------------------------------------------------------------------
+;	$100 ==> $1ff stack area
+;----------------------------------------------------------------------------
+;--------------------- scores -----------------------------
+;
+	org	$140
+scoreb	ds	7
+hscreb	ds	7
+leftb	ds	2
+score	ds	7
+hscore	ds	7
+hscpro	ds	3	;oku
+time	ds	1
+timeb	ds	3
+times	ds	1
+tiksuu	ds	1
+tksbuf	ds	3
+timbuf	ds	4
+total	ds	2
+totbuf	ds	5
+totdpt	ds	1
+;
+;================================================================
+;
+;
+;	work $200 ==> $6ff
+;
+;
+	org	$200
+;
+colwrk	ds	32	;color gen. work
+;
+gamen:	ds	6*64	;384
+;
+left:	ds	1
+point	ds	1	;shuryo point
+twoflg	ds	1	;nimanten extend
+eigflg	ds	1	;every hachimanten extend
+lfeodr	ds	1	;left extend sound order
+timofl	ds	1	;time out flag
+;
+;	shinzou
+shnflg	ds	1
+shinxl	ds	1
+shinxh	ds	1
+shiny	ds	1
+shncnt	ds	1
+;
+;--------------------------------------------------------------
+;	shishimaru
+dogflg	ds	1
+dogcnt	ds	1
+dogdir	ds	1
+dogxl	ds	1
+dogxh	ds	1
+dogy	ds	1
+dghsta	ds	1
+;
+;------------------------------------------------------------
+;	ninpou status
+NINMAX	equ	12
+;
+	msg	*,':ninsta'
+ninsta	ds	NINMAX
+ninfwk	ds	1
+nincnt	ds	1
+usemax	ds	1
+;
+;------------------------------------------------------------
+;=== ninpou ====
+takflg	ds	1	;takatobi status 0:nomal,1:high jump
+takodr	ds	1	;//////// order
+takwrk	ds	1	;//////// work
+hypodr	ds	1	;hyper run order
+kanflg	ds	1	;kanashibari work
+mssflg	ds	1	;musasabi flag
+msscnt	ds	1	;/////// count
+kirflg	ds	1	;kirigagure flag
+kircnt	ds	1	;////////// sonzai count
+kumflg	ds	1	;kumonori
+kumcnt	ds	1	;//////// count
+mnyrps	ds	1	;//////// yuragi position
+mizflg	ds	1	;mizukumo flag
+;
+nincmd	ds	8	;ninpou cmd
+nnpptr	ds	1	;ninpou put ptr
+nngptr	ds	1	;////// get ptr
+;
+;-------------------------------------------------------------
+;       << ninpou cursor >>>>
+curpos	ds	1	;ninpou cursor position
+curmwi	ds	1	;//////////// botton hanare check
+curmch	ds	1	;ninpou cursor modoshi
+curkrp	ds	1	;cursor repeat count
+abtfnc	ds	1	;a button function
+;
+;---------------------------------------------------------------
+;
+	msg	*,':gamef,clrflg,ovrflg'
+gamef:	ds	1	;game flag
+clrflg	ds	1	;area clear ok
+ovrflg	ds	1	;gameover flag
+demof	ds	1	;demo enable flg
+demtim	ds	1	;////// time
+;
+scrdbl	ds	1	;boss request chikuwa bonus bouble
+savscr	ds	1
+;
+	msg	*,':area'
+area	ds	1	;area no. 0-15(1-16)
+grade	ds	3	;grade no.
+nanido	ds	1	;difficalty
+;
+second	ds	1	;second timer
+secwrk	ds	1	;/////////// work (0-59)
+;
+totwfl	ds	1
+;
+;
+;----------------------------------------------------------
+;jinzou
+jinflg	ds	1
+jiny	ds	1
+jindir	ds	1
+jinxl	ds	1
+jinxh	ds	1
+;
+clkflg	ds	1
+clkxl	ds	1
+clkxh	ds	1
+;
+;-----------------------------------------------------------
+;	teki
+TEKMAX	equ	4
+;
+tekflg	ds	TEKMAX	;teki no shurui
+teksta	ds	TEKMAX	;////////////// no shurui
+tekxl	ds	TEKMAX	;teki x pos low
+tekxh	ds	TEKMAX	;////////// high
+teky	ds	TEKMAX	;teki y pos
+tekdir	ds	TEKMAX	;teki no direction
+tekxcn	ds	TEKMAX	;teki counter x
+tekycn	ds	TEKMAX	;//////////// y
+oldhxl	ds	TEKMAX	;hattori old pos
+oldhxh	ds	TEKMAX	;///////////////
+oldhy	ds	TEKMAX	;//////////////
+tekflp	ds	TEKMAX	;pat. flip time
+tekstp	equ	oldhxl	;teki x move step
+tekjpt	equ	oldhxh	;jump pos
+;
+teknof	ds	1
+xlsave	ds	1
+xhsave	ds	1
+ysave	ds	1
+dirchg	ds	1
+dltdat	ds	1
+tekoam	ds	1
+nowtek	ds	1
+oldsce	ds	1
+tektim	ds	1
+tekgrp	ds	1
+tekfir	ds	1
+kouwai	ds	1
+nxtblk	ds	1
+blkcnt	ds	1
+thnfir	ds	1
+tekdth	ds	1
+catcnt	ds	1
+catokf	ds	1
+catatc	ds	1
+hakatc	ds	1
+hakfir	ds	1
+krsfir	ds	1
+;
+;------------------------------------------------------------
+MISMAX	equ	6
+;
+misflg	ds	MISMAX
+misxl	ds	MISMAX
+misxh	ds	MISMAX
+misy	ds	MISMAX
+misdx	ds	MISMAX
+misdy	ds	MISMAX
+mismod	ds	MISMAX
+misdir	ds	MISMAX
+;
+mischr	ds	1
+miscol	ds	1
+;
+;-------------------------------------------------------------
+BOUMAX	equ	4
+;
+bouflg	ds	BOUMAX
+boucxl	ds	BOUMAX
+boucxh	ds	BOUMAX
+boucy	ds	BOUMAX
+;
+oldbge	ds	1
+boutim	ds	1
+boupfc	ds	1
+;
+;------------------------------------------------------------
+;riki
+rikflg	ds	1
+rikstp	ds	1
+rikxl	ds	1
+rikxh	ds	1
+riky	ds	1
+;
+;-------------------------------------------------------------
+TIKMAX	equ	8	;12
+;
+tikflg	ds	TIKMAX
+tikdir	ds	TIKMAX
+tikxl	ds	TIKMAX
+tikxh	ds	TIKMAX
+tiky	ds	TIKMAX
+tikxcn	ds	TIKMAX
+tikjpt	ds	TIKMAX
+;
+tezcnt	ds	1
+;
+tikcol	ds	1	;0-3
+;-------------------------------------------------------------
+;special bonus
+;
+spbflg	ds	1
+spbxl	ds	1
+spbxh	ds	1
+spby	ds	1
+spbstp	ds	1
+spbedg	ds	1
+timupf	ds	1
+;
+;------------------------------------------------------------
+;takahashi
+tksflg	ds	1
+tksxl	ds	1
+tksxh	ds	1
+tksy	ds	1
+tkscnt	ds	1
+;
+tksbcn	ds	1
+	msg	*,':bug'
+tksscn	ds	1
+tksedg	ds	1
+;
+;--------------------------------------------------------------
+;boss reqest
+bosflg	ds	1
+bosxl	ds	1
+bosxh	ds	1
+bosy	ds	1
+boscnt	ds	1
+;
+bosecn	ds	1
+boscxl	ds	1
+boscxh	ds	1
+boscy	ds	1
+bosget	ds	1
+bosgtb	ds	3
+;
+;------------------------------------------------------------
+;senmu request
+snmflg	ds	1
+snmxl	ds	1
+snmxh	ds	1
+snmy	ds	1
+;
+;-------------------------------------------------------------
+;
+	if	* > $700
+	err	;address $700
+	endif
+;
+;   $700 ====> $7ff  oam buffer
+;
+	org	$700
+;
+oambuf	ds	256	;$700
+;
+;----------------- macros ------------------------------------------
+;
+;
+PSHX	MACRO
+	txa
+	pha
+	ENDM
+;
+PULX	MACRO
+	pla
+	tax
+	ENDM
+;
+PSHY	MACRO
+	tya
+	pha
+	ENDM
+;
+PULY	MACRO
+	pla
+	tay
+	ENDM
+;
+ALLPSH	MACRO
+	pha
+	PSHX
+	PSHY
+	ENDM
+;
+ALLPLU	MACRO
+	PULY
+	PULX
+	pla
+	ENDM
+;
+PTRSET	MACRO	DATA,PTR
+	lda	#low %1
+	sta	%2
+	lda	#high %1
+	sta	%2+1
+	ENDM
+;
+INCPTR	MACRO	PTR
+	inc	%1
+	bne	*+4
+	inc	%1+1
+	ENDM
+;
+DECPTR	MACRO	PTR
+	sec
+	lda	%1
+	sbc	#1
+	sta	%1
+	bcs	*+4
+	dec	%1+1
+	ENDM	
+;
+PUSHM	MACRO	ADDR
+	lda	%1
+	pha
+	ENDM
+;
+POPM	MACRO	ADDR
+	pla
+	sta	%1
+	ENDM
+;
+JTBL	MACRO	DATA
+	dw	%1 - 1
+	ENDM	
+;
+INDCAL	MACRO	JMPVEC,REG
+	lda	#high ?%K
+	pha
+	lda	#low ?%K
+	pha
+	lda	%1+1,%2
+	pha
+	lda	%1+0,%2
+	pha
+?%K:	rts
+	ENDM
+;
+INDJMP	MACRO	JMPVEC,REG
+	lda	%1+1,%2
+	pha
+	lda	%1+0,%2
+	pha
+	rts
+	ENDM
+;
+;
+ANDDB	MACRO	ANDDAT,NOMAL
+	db	%1 and $fc,%2
+	ENDM
+;
+CKIDB	MACRO	XLOW,XHIGH,YDATA
+	db	%1 and $f8,%2,%3 and $f8
+	ENDM
+;
+SPBDB	MACRO	XLOW,XHIGH,YDATA
+	db	%1 * 8,%2,%3 * 8 + $30
+	ENDM
+BOSDB	MACRO	XCHR0,YCHR0
+	db	%1*8,%2*8+$30
+	ENDM
+;
+;------------  link files  --------------------
+;
+	IF	adrchk = 0
+;
+	link	hmain.a65
+	link	hatmov.a65
+	link	ninpou.a65
+	link	hatenm.a65
+	link	hatbou.a65
+	link	hattil.a65
+	link	rechat.a65
+	link	hatmus.a65
+;
+	link	HTCLEAR.SCR
+	link	HTBGM.SCR
+	link	HTOVER.SCR
+	link	HTCOMP.SCR
+	link	HTCAT.SCR
+	link	HTFIRE.SCR
+	link	HTTOJO.SCR
+	link	HTBONUS.SCR
+	link	HTWARP.SCR
+;
+	link	hatmap.a65
+;
+	ENDIF
+;----------------------------------------------
+;
+;
+	msg	'zero page use:',EZ,'Hbytes,zero page free:',$ed-EZ,'Hbytes'
+	msg	'debug = ',debug
+	msg	'picture = ',satsu
+	if	EZ > $ed
+	msg	'out of zero page area'
+	endif
+;
+;
+
